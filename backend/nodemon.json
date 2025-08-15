@@ -1,0 +1,21 @@
+{
+  "watch": [
+    "server.js",
+    "routes/",
+    "middleware/",
+    "controllers/",
+    "utils/"
+  ],
+  "ignore": [
+    "uploads/**",
+    "data/**",
+    "node_modules/**"
+  ],
+  "ext": "js,json",
+  "delay": "200ms",
+  "env": {
+    "NODE_ENV": "development",
+    "PORT": "5000"
+  },
+  "exec": "node server.js"
+}

@@ -1,0 +1,192 @@
+const API_BASE_URL = 'http://localhost:5000/api';
+
+// Helper function to format file size
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// Helper function to get file extension
+export const getFileExtension = (filename: string): string => {
+  return filename.split('.').pop()?.toLowerCase() || '';
+};
+
+// Generic API request function
+const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem('token');
+  
+  const config: RequestInit = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'API request failed');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('API request error:', error);
+    throw error;
+  }
+};
+
+// File upload API request function
+const apiFileUpload = async (endpoint: string, file: File, additionalData?: any) => {
+  const token = localStorage.getItem('token');
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  if (additionalData) {
+    Object.keys(additionalData).forEach(key => {
+      formData.append(key, additionalData[key]);
+    });
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'File upload failed');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('File upload error:', error);
+    throw error;
+  }
+};
+
+// Authentication API
+export const authAPI = {
+  login: async (email: string, password: string) => {
+    return apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  signup: async (fullName: string, email: string, password: string) => {
+    return apiRequest('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ fullName, email, password }),
+    });
+  },
+
+  getProfile: async () => {
+    return apiRequest('/auth/me');
+  },
+
+  forgotPassword: async (email: string) => {
+    return apiRequest('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  resetPassword: async (token: string, password: string) => {
+    return apiRequest('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  },
+
+  googleAuth: async (googleToken: string, email: string, fullName: string, avatar?: string) => {
+    return apiRequest('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ googleToken, email, fullName, avatar }),
+    });
+  },
+};
+
+// Tools API
+export const toolsAPI = {
+  compressImage: async (file: File) => {
+    return apiFileUpload('/tools/compress-image', file);
+  },
+
+  compressVideo: async (file: File) => {
+    return apiFileUpload('/tools/compress-video', file);
+  },
+
+  compressAudio: async (file: File) => {
+    return apiFileUpload('/tools/compress-audio', file);
+  },
+
+  compressPDF: async (file: File) => {
+    return apiFileUpload('/tools/compress-pdf', file);
+  },
+
+  convertImage: async (file: File, targetFormat: string) => {
+    return apiFileUpload('/tools/convert-image', file, { targetFormat });
+  },
+
+  convertVideo: async (file: File, targetFormat: string) => {
+    return apiFileUpload('/tools/convert-video', file, { targetFormat });
+  },
+
+  convertAudio: async (file: File, targetFormat: string) => {
+    return apiFileUpload('/tools/convert-audio', file, { targetFormat });
+  },
+
+  convertPDF: async (file: File, targetFormat: string) => {
+    return apiFileUpload('/tools/convert-pdf', file, { targetFormat });
+  },
+};
+
+// User API
+export const userAPI = {
+  getProfile: async () => {
+    return apiRequest('/user/profile');
+  },
+
+  updateProfile: async (fullName: string) => {
+    return apiRequest('/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify({ fullName }),
+    });
+  },
+
+  getFiles: async () => {
+    return apiRequest('/user/files');
+  },
+
+  deleteFile: async (fileId: string) => {
+    return apiRequest(`/user/files/${fileId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getStats: async () => {
+    return apiRequest('/user/stats');
+  },
+};
+
+export default {
+  auth: authAPI,
+  tools: toolsAPI,
+  user: userAPI,
+  formatFileSize,
+  getFileExtension,
+};
+

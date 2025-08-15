@@ -1,0 +1,26 @@
+[
+  {
+    "type": "image_compress",
+    "message": "Image compressed: compressed-file-1755270529203-924357113.avif savings 98.17%",
+    "severity": "info",
+    "userId": "anonymous",
+    "meta": {
+      "originalSize": 666988,
+      "compressedSize": 12218
+    },
+    "id": "1755270530072-mbtisf",
+    "timestamp": "2025-08-15T15:08:50.072Z"
+  },
+  {
+    "type": "image_convert",
+    "message": "Image converted to WEBP: converted-file-1755270546578-669605356.webp",
+    "severity": "info",
+    "userId": "anonymous",
+    "meta": {
+      "originalSize": 12218,
+      "convertedSize": 103494
+    },
+    "id": "1755270546694-u5m2ul",
+    "timestamp": "2025-08-15T15:09:06.694Z"
+  }
+]

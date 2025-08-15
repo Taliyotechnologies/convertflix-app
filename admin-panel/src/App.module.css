@@ -1,0 +1,32 @@
+.app {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-secondary);
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-left: 280px; /* Sidebar width */
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  background-color: var(--bg-secondary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mainContent {
+    margin-left: 0; /* Sidebar is hidden on mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .mainContent {
+    margin-left: 0;
+  }
+}

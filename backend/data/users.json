@@ -1,0 +1,24 @@
+[
+  {
+    "id": "1755266618679-bdxvzp",
+    "fullName": "Demo User",
+    "name": "Demo User",
+    "email": "demo@example.com",
+    "password": "$2b$10$/L9Ha/wBj/OsTWQvN9z9mOzw42KuFP1fNMyxqCE8GotirXQWhGoW.",
+    "createdAt": "2025-08-15T14:03:38.679Z",
+    "lastLogin": null,
+    "role": "user",
+    "status": "active"
+  },
+  {
+    "id": "1755266618753-n80u2h",
+    "fullName": "Admin User",
+    "name": "Admin User",
+    "email": "admin@convertflix.com",
+    "password": "$2b$10$ju2hJgBw1xJFQq13.zzpgOxbY6wdZW.a9Ps9DEktSuQs3OClKxexW",
+    "createdAt": "2025-08-15T14:03:38.753Z",
+    "lastLogin": null,
+    "role": "admin",
+    "status": "active"
+  }
+]

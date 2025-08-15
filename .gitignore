@@ -1,0 +1,50 @@
+# Root .gitignore for ConvertFlix (admin-panel, backend, frontend)
+
+# Dependencies
+**/node_modules/
+
+# Build outputs
+**/dist/
+**/build/
+**/.next/
+**/.nuxt/
+**/out/
+
+# Caches
+**/.cache/
+**/.turbo/
+**/.parcel-cache/
+**/.vite/
+**/.eslintcache
+**/*.tsbuildinfo
+
+# Testing
+**/coverage/
+
+# Logs
+**/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files (keep only examples)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Uploads and temp
+**/uploads/
+**/tmp/
+**/temp/
+
+# IDE / Editor
+**/.vscode/
+**/.idea/
+
+# OS
+.DS_Store
+**/.DS_Store
+Thumbs.db
+desktop.ini
