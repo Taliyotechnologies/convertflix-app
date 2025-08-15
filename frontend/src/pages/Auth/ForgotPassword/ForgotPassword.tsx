@@ -4,8 +4,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { 
   CheckCircle, 
   Clock, 
-  Mail,
-  AlertTriangle
+  Mail
 } from 'lucide-react';
 import styles from './ForgotPassword.module.css';
 

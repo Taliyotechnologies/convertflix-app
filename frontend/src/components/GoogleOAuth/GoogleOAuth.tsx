@@ -9,7 +9,7 @@ interface GoogleOAuthProps {
   onError?: (error: string) => void;
 }
 
-const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ mode, onSuccess, onError }) => {
+const GoogleOAuth: React.FC<GoogleOAuthProps> = ({ onSuccess, onError }) => {
   const { googleLogin } = useAuth();
 
   const login = useGoogleLogin({
