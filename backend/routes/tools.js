@@ -6,6 +6,56 @@ const { addActivity } = require('../utils/dataStore');
 // @route   POST /api/tools/compress-image
 // @desc    Compress image file
 // @access  Public
+// Helpful 405 handlers for incorrect HTTP methods to tool endpoints
+router.get('/compress-image', (req, res) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    hint: 'Use POST multipart/form-data with field "file" to /api/tools/compress-image'
+  });
+});
+router.get('/compress-video', (req, res) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    hint: 'Use POST multipart/form-data with field "file" to /api/tools/compress-video'
+  });
+});
+router.get('/compress-audio', (req, res) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    hint: 'Use POST multipart/form-data with field "file" to /api/tools/compress-audio'
+  });
+});
+router.get('/compress-pdf', (req, res) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    hint: 'Use POST multipart/form-data with field "file" to /api/tools/compress-pdf'
+  });
+});
+router.get('/convert-image', (req, res) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    hint: 'Use POST multipart/form-data with field "file" and form field "targetFormat" to /api/tools/convert-image'
+  });
+});
+router.get('/convert-video', (req, res) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    hint: 'Use POST multipart/form-data with field "file" and form field "targetFormat" to /api/tools/convert-video'
+  });
+});
+router.get('/convert-audio', (req, res) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    hint: 'Use POST multipart/form-data with field "file" and form field "targetFormat" to /api/tools/convert-audio'
+  });
+});
+router.get('/convert-pdf', (req, res) => {
+  res.status(405).json({
+    error: 'Method Not Allowed',
+    hint: 'Use POST multipart/form-data with field "file" and form field "targetFormat" to /api/tools/convert-pdf'
+  });
+});
+
 router.post('/compress-image', uploadImage, async (req, res) => {
   try {
     if (!req.file) {
