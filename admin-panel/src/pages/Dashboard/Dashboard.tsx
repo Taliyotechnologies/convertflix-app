@@ -6,7 +6,6 @@ import {
   TrendingUp,
   Activity,
   Clock,
-  DollarSign,
   BarChart3,
   AlertTriangle
 } from 'lucide-react';
