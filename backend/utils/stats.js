@@ -1,6 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const { getUsers } = require('./dataStore');
+const mongoose = require('mongoose');
+const User = require('../models/User');
+const useMongo = () => {
+  try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
+};
 
 async function computeStats() {
   const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -38,13 +43,29 @@ async function computeStats() {
   }
 
   const users = await getUsers();
-  const totalUsers = Array.isArray(users) ? users.length : 0;
+  let totalUsers = 0;
+  let activeUsers = 0;
   const now = Date.now();
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-  const activeUsers = (users || []).filter(u => {
-    const ts = u.lastLogin ? new Date(u.lastLogin).getTime() : 0;
-    return ts && now - ts <= sevenDaysMs;
-  }).length;
+  if (useMongo()) {
+    try {
+      totalUsers = await User.countDocuments({});
+      const since = new Date(now - sevenDaysMs);
+      activeUsers = await User.countDocuments({ lastLogin: { $gte: since } });
+    } catch (_) {
+      totalUsers = Array.isArray(users) ? users.length : 0;
+      activeUsers = (users || []).filter(u => {
+        const ts = u.lastLogin ? new Date(u.lastLogin).getTime() : 0;
+        return ts && now - ts <= sevenDaysMs;
+      }).length;
+    }
+  } else {
+    totalUsers = Array.isArray(users) ? users.length : 0;
+    activeUsers = (users || []).filter(u => {
+      const ts = u.lastLogin ? new Date(u.lastLogin).getTime() : 0;
+      return ts && now - ts <= sevenDaysMs;
+    }).length;
+  }
   const revenue = 0;
 
   return {

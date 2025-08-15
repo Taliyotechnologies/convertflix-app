@@ -7,6 +7,11 @@ const { getUsers, getSettings, saveSettings, getActivities } = require('../utils
 const realtime = require('../utils/realtime');
 const { computeStats } = require('../utils/stats');
 const { listFiles } = require('../utils/files');
+const mongoose = require('mongoose');
+const User = require('../models/User');
+const useMongo = () => {
+  try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
+};
 
 // @route   GET /api/admin/stats
 // @desc    Get dashboard statistics
@@ -178,30 +183,53 @@ router.get('/activity', auth, async (req, res) => {
 router.get('/users', auth, async (req, res) => {
   try {
     const { status, q, limit = 50 } = req.query;
-    const list = await getUsers();
-    let filtered = (list || []).map(u => ({
-      id: u.id,
-      email: u.email,
-      name: u.name || u.fullName || '',
-      role: u.role || 'user',
-      createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-      lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-      status: u.status || 'active',
-      avatar: u.avatar
-    }));
 
-    if (status) filtered = filtered.filter(u => (u.status || 'active') === status);
-    if (q) {
-      const ql = q.toString().toLowerCase();
-      filtered = filtered.filter(u =>
-        (u.name || '').toLowerCase().includes(ql) ||
-        (u.email || '').toLowerCase().includes(ql)
-      );
+    if (useMongo()) {
+      const query = {};
+      if (status) query.status = status;
+      if (q) {
+        const rx = new RegExp(q.toString(), 'i');
+        query.$or = [{ fullName: rx }, { email: rx }];
+      }
+      const lim = parseInt(limit);
+      const docs = await User.find(query).limit(Number.isNaN(lim) ? 0 : lim).lean();
+      const mapped = (docs || []).map(u => ({
+        id: u._id.toString(),
+        email: u.email,
+        name: u.fullName || '',
+        role: u.role || 'user',
+        createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+        lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
+        status: u.status || 'active',
+        avatar: u.avatar
+      }));
+      return res.json(mapped);
+    } else {
+      const list = await getUsers();
+      let filtered = (list || []).map(u => ({
+        id: u.id,
+        email: u.email,
+        name: u.name || u.fullName || '',
+        role: u.role || 'user',
+        createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+        lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
+        status: u.status || 'active',
+        avatar: u.avatar
+      }));
+
+      if (status) filtered = filtered.filter(u => (u.status || 'active') === status);
+      if (q) {
+        const ql = q.toString().toLowerCase();
+        filtered = filtered.filter(u =>
+          (u.name || '').toLowerCase().includes(ql) ||
+          (u.email || '').toLowerCase().includes(ql)
+        );
+      }
+
+      const lim = parseInt(limit);
+      const result = Number.isNaN(lim) ? filtered : filtered.slice(0, lim);
+      res.json(result);
     }
-
-    const lim = parseInt(limit);
-    const result = Number.isNaN(lim) ? filtered : filtered.slice(0, lim);
-    res.json(result);
   } catch (error) {
     console.error('Get admin users error:', error);
     res.status(500).json({ error: 'Server error getting admin users' });

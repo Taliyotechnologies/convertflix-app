@@ -6,6 +6,11 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const auth = require('../middleware/auth');
 const { getUsers, saveUsers } = require('../utils/dataStore');
+const mongoose = require('mongoose');
+const User = require('../models/User');
+const useMongo = () => {
+  try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
+};
 
 // In-memory storage for reset tokens (in production, use database or cache)
 const resetTokens = new Map();
@@ -41,41 +46,53 @@ router.post('/signup', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Check if user already exists
-    const list = await getUsers();
-    const exists = (list || []).some(u => (u.email || '').toLowerCase() === email.toLowerCase());
-    if (exists) {
-      return res.status(400).json({ error: 'User already exists with this email' });
-    }
+    let createdUserId, createdUserEmail, createdUserFullName, createdUserRole;
 
-    // Create user
-    const user = {
-      id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8),
-      fullName,
-      name: fullName,
-      email,
-      password: hashedPassword,
-      createdAt: new Date().toISOString(),
-      lastLogin: null,
-      role: role || 'user',
-      status: 'active'
-    };
-
-    // Persist user
-    await saveUsers([...(list || []), user]);
-
-    // Update last login
-    const idx = (list || []).findIndex(u => u && u.id === user.id);
-    if (idx >= 0) {
-      const updated = { ...user, lastLogin: new Date().toISOString() };
-      const next = [...list];
-      next[idx] = updated;
-      await saveUsers(next);
+    if (useMongo()) {
+      const existing = await User.findOne({ email: (email || '').toLowerCase() }).lean();
+      if (existing) {
+        return res.status(400).json({ error: 'User already exists with this email' });
+      }
+      const doc = await User.create({
+        fullName,
+        email: (email || '').toLowerCase(),
+        password: hashedPassword,
+        role: role || 'user',
+        status: 'active',
+        lastLogin: new Date(),
+      });
+      createdUserId = doc._id.toString();
+      createdUserEmail = doc.email;
+      createdUserFullName = doc.fullName;
+      createdUserRole = doc.role;
+    } else {
+      // JSON fallback
+      const list = await getUsers();
+      const exists = (list || []).some(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
+      if (exists) {
+        return res.status(400).json({ error: 'User already exists with this email' });
+      }
+      const user = {
+        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8),
+        fullName,
+        name: fullName,
+        email,
+        password: hashedPassword,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        role: role || 'user',
+        status: 'active'
+      };
+      await saveUsers([...(list || []), user]);
+      createdUserId = user.id;
+      createdUserEmail = user.email;
+      createdUserFullName = user.fullName;
+      createdUserRole = user.role;
     }
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: createdUserId, email: createdUserEmail },
       process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
       { expiresIn: '7d' }
     );
@@ -84,10 +101,10 @@ router.post('/signup', async (req, res) => {
       success: true,
       token,
       user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role
+        id: createdUserId,
+        fullName: createdUserFullName,
+        email: createdUserEmail,
+        role: createdUserRole
       }
     });
   } catch (error) {
@@ -108,22 +125,32 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Please provide email and password' });
     }
 
-    // Check if user exists
-    const list = await getUsers();
-    const user = (list || []).find(u => (u.email || '').toLowerCase() === email.toLowerCase());
-    if (!user) {
+    // Find user (Mongo first, then JSON fallback)
+    let dbUser = null;
+    if (useMongo()) {
+      dbUser = await User.findOne({ email: (email || '').toLowerCase() });
+    } else {
+      const list = await getUsers();
+      dbUser = (list || []).find(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
+    }
+    if (!dbUser) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const hashed = dbUser.password || '';
+    const isMatch = await bcrypt.compare(password, hashed);
     if (!isMatch) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token
+    // Update lastLogin for Mongo path (best-effort)
+    if (useMongo() && dbUser && dbUser._id) {
+      try { await User.updateOne({ _id: dbUser._id }, { $set: { lastLogin: new Date() } }); } catch (_) {}
+    }
+
+    const userId = dbUser._id ? dbUser._id.toString() : dbUser.id;
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId, email: dbUser.email },
       process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
       { expiresIn: '7d' }
     );
@@ -132,10 +159,10 @@ router.post('/login', async (req, res) => {
       success: true,
       token,
       user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role
+        id: userId,
+        fullName: dbUser.fullName || dbUser.name || '',
+        email: dbUser.email,
+        role: dbUser.role || 'user'
       }
     });
   } catch (error) {
@@ -149,20 +176,32 @@ router.post('/login', async (req, res) => {
 // @access  Private
 router.get('/me', auth, async (req, res) => {
   try {
-    const list = await getUsers();
-    const user = (list || []).find(u => u.id === req.user.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    if (useMongo()) {
+      const doc = await User.findById(req.user.userId).lean();
+      if (!doc) return res.status(404).json({ error: 'User not found' });
+      res.json({
+        success: true,
+        user: {
+          id: doc._id.toString(),
+          email: doc.email,
+          fullName: doc.fullName || '',
+          role: doc.role || 'user'
+        }
+      });
+    } else {
+      const list = await getUsers();
+      const user = (list || []).find(u => u.id === req.user.userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName || user.name || '',
+          role: user.role
+        }
+      });
     }
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName || user.name || '',
-        role: user.role
-      }
-    });
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ error: 'Server error getting profile' });
@@ -180,12 +219,12 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Check if user exists
-    const list = await getUsers();
-    const user = (list || []).find(u => (u.email || '').toLowerCase() === email.toLowerCase());
-    if (!user) {
-      // Don't reveal if user exists or not for security
-      return res.json({ success: true, message: 'If an account exists, a reset email has been sent' });
+    // Check if user exists (but don't reveal result)
+    if (useMongo()) {
+      await User.findOne({ email: (email || '').toLowerCase() }).lean();
+    } else {
+      const list = await getUsers();
+      (list || []).find(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
     }
 
     // Generate reset token
@@ -246,22 +285,24 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
 
-    // Find user
-    const list = await getUsers();
-    const idx = (list || []).findIndex(u => (u.email || '').toLowerCase() === resetData.email.toLowerCase());
-    if (idx < 0) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
     // Hash new password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Update user password
-    const updated = { ...list[idx], password: hashedPassword };
-    const next = [...list];
-    next[idx] = updated;
-    await saveUsers(next);
+    if (useMongo()) {
+      const doc = await User.findOne({ email: (resetData.email || '').toLowerCase() });
+      if (!doc) return res.status(400).json({ error: 'User not found' });
+      doc.password = hashedPassword;
+      await doc.save();
+    } else {
+      const list = await getUsers();
+      const idx = (list || []).findIndex(u => (u.email || '').toLowerCase() === (resetData.email || '').toLowerCase());
+      if (idx < 0) return res.status(400).json({ error: 'User not found' });
+      const updated = { ...list[idx], password: hashedPassword };
+      const next = [...list];
+      next[idx] = updated;
+      await saveUsers(next);
+    }
 
     // Remove used token
     resetTokens.delete(token);
@@ -287,51 +328,83 @@ router.post('/google', async (req, res) => {
     // In a real app, verify the Google token
     // For demo purposes, we'll trust the provided data
 
-    const list = await getUsers();
-    let user = (list || []).find(u => (u.email || '').toLowerCase() === email.toLowerCase());
-    if (!user) {
-      user = {
-        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8),
-        fullName,
-        name: fullName,
-        email,
-        password: '', // No password for Google users
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        role: 'user',
-        avatar,
-        googleId: true,
-        status: 'active'
-      };
-      await saveUsers([...(list || []), user]);
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar
+    if (useMongo()) {
+      let doc = await User.findOne({ email: (email || '').toLowerCase() });
+      if (!doc) {
+        doc = await User.create({
+          fullName,
+          email: (email || '').toLowerCase(),
+          password: '',
+          role: 'user',
+          avatar,
+          googleId: true,
+          status: 'active',
+          lastLogin: new Date(),
+        });
+      } else {
+        try { await User.updateOne({ _id: doc._id }, { $set: { lastLogin: new Date(), avatar } }); } catch (_) {}
       }
-    });
+      const token = jwt.sign(
+        { userId: doc._id.toString(), email: doc.email },
+        process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
+        { expiresIn: '7d' }
+      );
+      return res.json({
+        success: true,
+        token,
+        user: {
+          id: doc._id.toString(),
+          fullName: doc.fullName,
+          email: doc.email,
+          role: doc.role,
+          avatar: doc.avatar
+        }
+      });
+    } else {
+      const list = await getUsers();
+      let user = (list || []).find(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
+      if (!user) {
+        user = {
+          id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8),
+          fullName,
+          name: fullName,
+          email,
+          password: '',
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString(),
+          role: 'user',
+          avatar,
+          googleId: true,
+          status: 'active'
+        };
+        await saveUsers([...(list || []), user]);
+      }
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
+        { expiresIn: '7d' }
+      );
+      res.json({
+        success: true,
+        token,
+        user: {
+          id: user.id,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          avatar: user.avatar
+        }
+      });
+    }
   } catch (error) {
     console.error('Google auth error:', error);
     res.status(500).json({ error: 'Server error during Google authentication' });
   }
 });
 
-// Initialize demo users
+// Initialize demo users (JSON fallback only)
 const initializeDemoUsers = async () => {
+  if (useMongo()) return;
   const demoUsers = [
     {
       email: 'demo@example.com',
@@ -369,7 +442,7 @@ const initializeDemoUsers = async () => {
   await saveUsers(next);
 };
 
-// Initialize demo users on startup
+// Initialize demo users on startup (only for JSON storage)
 initializeDemoUsers();
 
 module.exports = router;
