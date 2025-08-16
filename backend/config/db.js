@@ -53,6 +53,34 @@ async function migrateJsonUsersIfEmpty() {
   }
 }
 
+// Ensure a specific admin user from environment variables exists (Mongo only)
+// Uses:
+//   INIT_ADMIN_EMAIL, INIT_ADMIN_PASSWORD, INIT_ADMIN_NAME (optional)
+async function ensureEnvAdminUser() {
+  try {
+    const email = (process.env.INIT_ADMIN_EMAIL || '').toLowerCase().trim();
+    const password = process.env.INIT_ADMIN_PASSWORD;
+    if (!email || !password) return;
+
+    const fullName = process.env.INIT_ADMIN_NAME || 'Admin User';
+
+    const existing = await User.findOne({ email }).lean();
+    if (!existing) {
+      const hashed = await bcrypt.hash(password, 10);
+      await User.create({
+        fullName,
+        email,
+        password: hashed,
+        role: 'admin',
+        status: 'active',
+      });
+      console.log(`✅ Seeded admin user from env: ${email}`);
+    }
+  } catch (e) {
+    console.error('Env admin seed error:', e.message || e);
+  }
+}
+
 async function connectDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
@@ -65,6 +93,7 @@ async function connectDB() {
     });
     console.log('✅ MongoDB connected');
     await migrateJsonUsersIfEmpty();
+    await ensureEnvAdminUser();
     return mongoose.connection;
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message || err);
