@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { uploadImage, uploadVideo, uploadAudio, uploadPDF, uploadAny } = require('../middleware/upload');
-const { addActivity } = require('../utils/dataStore');
+const { addActivity, recordFileProcessed } = require('../utils/dataStore');
 // Speed preset for tools: 'fast' | 'balanced' | 'quality' (default: 'fast')
 const SPEED = (process.env.TOOLS_SPEED_PRESET || process.env.SPEED_PRESET || 'fast').toLowerCase();
 
@@ -175,6 +175,9 @@ router.post('/compress-image', uploadImage, async (req, res) => {
     });
 
     try {
+      await recordFileProcessed({ size: originalSize, kind: 'compressed' });
+    } catch (_) {}
+    try {
       await addActivity({
         type: 'image_compress',
         message: `Image compressed: ${path.basename(finalPath)} savings ${compressionRatio}%`,
@@ -284,6 +287,9 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
     }
 
   try {
+      await recordFileProcessed({ size: originalSize, kind: 'compressed' });
+    } catch (_) {}
+  try {
       await addActivity({
         type: 'video_compress',
         message: `Video compressed: ${path.basename(outputPath)} savings ${compressionRatio}%`,
@@ -361,6 +367,9 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
       }
     }
 
+    try {
+      await recordFileProcessed({ size: originalSize, kind: 'compressed' });
+    } catch (_) {}
     try {
       await addActivity({
         type: 'audio_compress',
@@ -489,6 +498,7 @@ router.post('/compress-pdf', uploadPDF, async (req, res) => {
     try { fs.unlinkSync(inputPath); } catch (_) {}
 
     const savingsPercent = ((originalSize - compressedSize) / originalSize * 100).toFixed(2);
+    try { await recordFileProcessed({ size: originalSize, kind: 'compressed' }); } catch (_) {}
     try {
       await addActivity({
         type: 'pdf_compress',
@@ -577,6 +587,7 @@ router.post('/convert-image', uploadImage, async (req, res) => {
     }
   }
 
+    try { await recordFileProcessed({ size: originalSize, kind: 'converted' }); } catch (_) {}
     try {
       await addActivity({
         type: 'image_convert',
@@ -675,6 +686,7 @@ router.post('/convert-video', uploadVideo, async (req, res) => {
     }
   }
 
+    try { await recordFileProcessed({ size: originalSize, kind: 'converted' }); } catch (_) {}
     try {
       await addActivity({
         type: 'video_convert',
@@ -777,6 +789,7 @@ router.post('/convert-audio', uploadAudio, async (req, res) => {
     }
   }
 
+    try { await recordFileProcessed({ size: originalSize, kind: 'converted' }); } catch (_) {}
     try {
       await addActivity({
         type: 'audio_convert',

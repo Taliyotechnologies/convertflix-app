@@ -15,10 +15,17 @@ function listFiles(limit) {
   const out = [];
   if (fs.existsSync(uploadsDir)) {
     const fileList = fs.readdirSync(uploadsDir);
-    fileList.forEach((file, index) => {
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    let idx = 0;
+    fileList.forEach((file) => {
       const filePath = path.join(uploadsDir, file);
       try {
         const st = fs.statSync(filePath);
+        const ageMs = now - new Date(st.mtime).getTime();
+        if (ageMs > oneDayMs) {
+          return; // skip files older than 1 day
+        }
         const ext = path.extname(file).toLowerCase();
         const type = detectType(ext);
 
@@ -34,7 +41,7 @@ function listFiles(limit) {
         }
 
         const record = {
-          id: (index + 1).toString(),
+          id: (idx + 1).toString(),
           name: file,
           type,
           size: st.size,
@@ -46,6 +53,7 @@ function listFiles(limit) {
           convertedFormat,
         };
         out.push(record);
+        idx++;
       } catch (_) {}
     });
   }

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { getUsers } = require('./dataStore');
+const { getUsers, getMetrics } = require('./dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const useMongo = () => {
@@ -8,39 +8,22 @@ const useMongo = () => {
 };
 
 async function computeStats() {
-  const uploadsDir = path.join(__dirname, '..', 'uploads');
-  let totalFiles = 0;
-  let totalStorage = 0;
-  let filesProcessedToday = 0;
-  let conversionRate = 0;
-  let averageFileSize = 0;
+  // Persistent metrics for lifetime stats
+  const metrics = await getMetrics();
+  const lifetimeFiles = Number(metrics.lifetimeFiles || 0);
+  const lifetimeBytes = Number(metrics.lifetimeBytes || 0);
+  const lifetimeConverted = Number(metrics.lifetimeConverted || 0);
+  const lifetimeCompressed = Number(metrics.lifetimeCompressed || 0);
 
-  if (fs.existsSync(uploadsDir)) {
-    const files = fs.readdirSync(uploadsDir);
-    totalFiles = files.length;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const today = metrics.byDay && metrics.byDay[todayStr] ? metrics.byDay[todayStr] : { files: 0 };
 
-    let totalSize = 0;
-    let convertedFiles = 0;
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-
-    files.forEach(file => {
-      const filePath = path.join(uploadsDir, file);
-      try {
-        const st = fs.statSync(filePath);
-        totalSize += st.size;
-        if (file.startsWith('converted-') || file.startsWith('compressed-')) {
-          convertedFiles++;
-        }
-        const fileDate = new Date(st.mtime).toISOString().split('T')[0];
-        if (fileDate === todayStr) filesProcessedToday++;
-      } catch (_) {}
-    });
-
-    totalStorage = totalSize;
-    conversionRate = totalFiles > 0 ? (convertedFiles / totalFiles) * 100 : 0;
-    averageFileSize = totalFiles > 0 ? Math.round(totalSize / totalFiles) : 0;
-  }
+  const totalFiles = lifetimeFiles;
+  const totalStorage = lifetimeBytes;
+  const filesProcessedToday = Number(today.files || 0);
+  const numerator = lifetimeConverted + lifetimeCompressed;
+  const conversionRate = lifetimeFiles > 0 ? (numerator / lifetimeFiles) * 100 : 0;
+  const averageFileSize = lifetimeFiles > 0 ? Math.round(lifetimeBytes / lifetimeFiles) : 0;
 
   const users = await getUsers();
   let totalUsers = 0;

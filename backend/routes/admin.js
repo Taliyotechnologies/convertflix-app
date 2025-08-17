@@ -82,10 +82,27 @@ router.get('/stream', auth, async (req, res) => {
   };
   realtime.on('activity', onActivity);
 
+  // Live metrics -> recompute and send stats
+  const onMetrics = async () => {
+    try {
+      const s = await computeStats();
+      send('stats', s);
+    } catch (_) {}
+  };
+  realtime.on('stats_metrics_updated', onMetrics);
+
+  // Live files -> send updated list
+  const onFilesUpdated = () => {
+    try { send('files', listFiles(500)); } catch (_) {}
+  };
+  realtime.on('files_updated', onFilesUpdated);
+
   req.on('close', () => {
     clearInterval(heartbeat);
     clearInterval(periodic);
     try { realtime.off ? realtime.off('activity', onActivity) : realtime.removeListener('activity', onActivity); } catch (_) {}
+    try { realtime.off ? realtime.off('stats_metrics_updated', onMetrics) : realtime.removeListener('stats_metrics_updated', onMetrics); } catch (_) {}
+    try { realtime.off ? realtime.off('files_updated', onFilesUpdated) : realtime.removeListener('files_updated', onFilesUpdated); } catch (_) {}
     try { res.end(); } catch (_) {}
   });
 });
@@ -95,54 +112,9 @@ router.get('/stream', auth, async (req, res) => {
 // @access  Private (Admin)
 router.get('/files', auth, async (req, res) => {
   try {
-    const uploadsDir = path.join(__dirname, '../uploads');
-    const out = [];
     const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
-
-    if (fs.existsSync(uploadsDir)) {
-      const fileList = fs.readdirSync(uploadsDir);
-      fileList.forEach((file, index) => {
-        const filePath = path.join(uploadsDir, file);
-        try {
-          const st = fs.statSync(filePath);
-          const ext = path.extname(file).toLowerCase();
-          let type = 'other';
-          if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.bmp', '.tiff'].includes(ext)) type = 'image';
-          else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm'].includes(ext)) type = 'video';
-          else if (['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'].includes(ext)) type = 'audio';
-          else if (ext === '.pdf') type = 'pdf';
-          else if (['.doc', '.docx', '.txt'].includes(ext)) type = 'document';
-
-          const isProcessed = file.startsWith('converted-') || file.startsWith('compressed-');
-          const status = isProcessed ? 'completed' : 'uploaded';
-
-          const originalFormat = ext.replace('.', '');
-          let convertedFormat = undefined;
-          if (file.startsWith('converted-')) {
-            convertedFormat = originalFormat;
-          } else if (file.startsWith('compressed-')) {
-            convertedFormat = originalFormat;
-          }
-
-          const fileRecord = {
-            id: (index + 1).toString(),
-            name: file,
-            type,
-            size: st.size,
-            status,
-            uploadedBy: 'anonymous',
-            uploadedAt: st.mtime.toISOString(),
-            convertedAt: isProcessed ? st.mtime.toISOString() : null,
-            originalFormat,
-            convertedFormat
-          };
-          out.push(fileRecord);
-        } catch (_) {}
-      });
-    }
-
-    const result = typeof limit === 'number' ? out.slice(0, limit) : out;
-    res.json(result);
+    const files = listFiles(limit);
+    res.json(files);
   } catch (error) {
     console.error('Get admin files error:', error);
     res.status(500).json({ error: 'Server error getting admin files' });
@@ -269,22 +241,22 @@ router.put('/settings', auth, async (req, res) => {
 router.delete('/files/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const uploadsDir = path.join(__dirname, '../uploads');
-    
-    if (fs.existsSync(uploadsDir)) {
-      const files = fs.readdirSync(uploadsDir);
-      const fileToDelete = files[parseInt(id) - 1]; // Convert ID to array index
-      
-      if (fileToDelete) {
-        const filePath = path.join(uploadsDir, fileToDelete);
-        fs.unlinkSync(filePath);
-        res.json({ success: true, message: 'File deleted successfully' });
-      } else {
-        res.status(404).json({ error: 'File not found' });
-      }
-    } else {
-      res.status(404).json({ error: 'Uploads directory not found' });
+    const idx = parseInt(id) - 1;
+    if (Number.isNaN(idx) || idx < 0) return res.status(400).json({ error: 'Invalid file id' });
+
+    const files = listFiles(10000); // filtered to last 1 day
+    const rec = files[idx];
+    if (!rec) return res.status(404).json({ error: 'File not found' });
+
+    const filePath = path.join(__dirname, '../uploads', rec.name);
+    try {
+      fs.unlinkSync(filePath);
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to delete file' });
     }
+
+    try { realtime.emit('files_updated', { deleted: [rec.name] }); } catch (_) {}
+    res.json({ success: true, message: 'File deleted successfully' });
   } catch (error) {
     console.error('Delete file error:', error);
     res.status(500).json({ error: 'Server error deleting file' });

@@ -54,7 +54,7 @@ const defaultSettings = {
   allowedFormats: ['jpg', 'png', 'gif', 'webp', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'pdf', 'docx'],
   maintenanceMode: false,
   emailNotifications: true,
-  autoDeleteDays: 30
+  autoDeleteDays: 1
 };
 
 async function getSettings() {
@@ -92,6 +92,68 @@ async function addActivity(activity) {
   return extended;
 }
 
+// Metrics (persistent dashboard counters)
+const defaultMetrics = {
+  lifetimeFiles: 0,         // total files processed historically
+  lifetimeBytes: 0,         // total input bytes processed historically
+  lifetimeConverted: 0,     // total files converted
+  lifetimeCompressed: 0,    // total files compressed
+  byDay: {}                 // { 'YYYY-MM-DD': { files, bytes, converted, compressed } }
+};
+
+async function getMetrics() {
+  const m = await readJSON('metrics', defaultMetrics);
+  // Ensure required fields and shapes
+  return {
+    ...defaultMetrics,
+    ...(m || {}),
+    byDay: { ...(m && m.byDay ? m.byDay : {}) }
+  };
+}
+
+async function saveMetrics(metrics) {
+  const toSave = {
+    ...defaultMetrics,
+    ...(metrics || {}),
+    byDay: { ...((metrics || {}).byDay || {}) }
+  };
+  await writeJSON('metrics', toSave);
+  return toSave;
+}
+
+function todayKey(date = new Date()) {
+  return date.toISOString().split('T')[0];
+}
+
+async function recordFileProcessed({ size = 0, kind = 'processed', when = new Date() } = {}) {
+  const m = await getMetrics();
+  m.lifetimeFiles = (m.lifetimeFiles || 0) + 1;
+  m.lifetimeBytes = (m.lifetimeBytes || 0) + (Number(size) || 0);
+  if (kind === 'converted') m.lifetimeConverted = (m.lifetimeConverted || 0) + 1;
+  if (kind === 'compressed') m.lifetimeCompressed = (m.lifetimeCompressed || 0) + 1;
+
+  const key = todayKey(when);
+  const day = m.byDay[key] || { files: 0, bytes: 0, converted: 0, compressed: 0 };
+  day.files += 1;
+  day.bytes += (Number(size) || 0);
+  if (kind === 'converted') day.converted += 1;
+  if (kind === 'compressed') day.compressed += 1;
+  m.byDay[key] = day;
+
+  // Optional: prune very old days to keep file small (keep last 90 days)
+  try {
+    const keys = Object.keys(m.byDay).sort();
+    const excess = Math.max(0, keys.length - 90);
+    for (let i = 0; i < excess; i++) {
+      delete m.byDay[keys[i]];
+    }
+  } catch (_) {}
+
+  await saveMetrics(m);
+  try { realtime.emit('stats_metrics_updated', m); } catch (_) {}
+  return m;
+}
+
 module.exports = {
   getUsers,
   saveUsers,
@@ -99,5 +161,10 @@ module.exports = {
   saveSettings,
   getActivities,
   addActivity,
-  defaultSettings
+  defaultSettings,
+  // metrics
+  getMetrics,
+  saveMetrics,
+  recordFileProcessed,
+  defaultMetrics
 };

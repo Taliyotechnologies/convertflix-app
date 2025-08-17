@@ -5,6 +5,8 @@ const morgan = require('morgan');
 const path = require('path');
 require('dotenv').config();
 const { connectDB } = require('./config/db');
+const { cleanupOldUploads } = require('./utils/retention');
+const { getSettings } = require('./utils/dataStore');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -63,6 +65,22 @@ app.listen(PORT, () => {
   console.log(`🚀 ConvertFlix Backend running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+
+  // Schedule retention cleanup (default 1 day); run once on startup and hourly
+  async function runCleanup() {
+    try {
+      const settings = await getSettings().catch(() => ({}));
+      const days = Number(settings && settings.autoDeleteDays) || 1;
+      const { count } = await cleanupOldUploads(days);
+      if (count > 0) {
+        console.log(`🧹 Retention cleanup removed ${count} old file(s) (> ${days} day(s))`);
+      }
+    } catch (e) {
+      console.error('Retention cleanup run error:', e && e.message ? e.message : e);
+    }
+  }
+  runCleanup();
+  setInterval(runCleanup, 60 * 60 * 1000);
 });
 
 module.exports = app;
