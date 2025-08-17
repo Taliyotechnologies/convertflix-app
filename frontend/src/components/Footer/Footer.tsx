@@ -99,7 +99,7 @@ const Footer: React.FC = () => {
             <p>&copy; {currentYear} ConvertFlix. All rights reserved.</p>
           </div>
           <div className={styles.credit}>
-            <p>made by <span className={styles.brandName}>taliyo technologies</span></p>
+            <p>made by <a href="https://taliyotechnologies.com/" target="_blank" rel="noopener noreferrer" className={styles.brandName}>taliyo technologies</a></p>
           </div>
           <div className={styles.bottomLinks}>
             <Link to="/terms">Terms</Link>

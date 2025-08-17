@@ -16,8 +16,8 @@ const Owner: React.FC = () => {
         <div className={styles.hero}>
           <h1>Taliyo Technologies</h1>
           <p className={styles.subtitle}>
-            Building simple, fast and reliable file tools. ConvertFlix is crafted with care by
-            Taliyo Technologies.
+            Building simple, fast and reliable file tools. ConvertFlix is crafted by
+            <a href="https://taliyotechnologies.com/" target="_blank" rel="noopener noreferrer"> Taliyo Technologies</a>.
           </p>
         </div>
 
@@ -38,12 +38,12 @@ const Owner: React.FC = () => {
               <h2>Harsh Budhauliya</h2>
               <p className={styles.title}>Founder, Taliyo Technologies</p>
               <p className={styles.bio}>
-                Harsh Budhauliya leads Taliyo Technologies with a builder’s mindset and product-first
+                Harsh Budhauliya leads <a href="https://taliyotechnologies.com/" target="_blank" rel="noopener noreferrer">Taliyo Technologies</a> with a builder’s mindset and product-first
                 approach. Taliyo focuses on creating practical, high‑quality web tools that feel fast,
                 look clean and work reliably for everyone.
               </p>
               <p className={styles.bio}>
-                ConvertFlix is a Taliyo initiative — a modern suite for compression and conversion that
+                ConvertFlix is a <a href="https://taliyotechnologies.com/" target="_blank" rel="noopener noreferrer">Taliyo Technologies</a> initiative — a modern suite for compression and conversion that
                 makes heavy files lighter without compromising on quality.
               </p>
             </div>
@@ -154,7 +154,7 @@ const Owner: React.FC = () => {
           </div>
         </section>
 
-        <p className={styles.madeBy}>Made by Taliyo Technologies</p>
+        <p className={styles.madeBy}>Made by <a href="https://taliyotechnologies.com/" target="_blank" rel="noopener noreferrer">Taliyo Technologies</a></p>
       </div>
     </div>
   );

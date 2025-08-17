@@ -21,7 +21,7 @@ const About: React.FC = () => {
         <div className={styles.hero}>
           <h1>About ConvertFlix</h1>
           <p className={styles.subtitle}>
-            Empowering users worldwide with professional-grade file optimization tools
+            Built by <a href="https://taliyotechnologies.com/" target="_blank" rel="noopener noreferrer">Taliyo Technologies</a> — a leading IT company in India for web/app development, design and digital marketing.
           </p>
         </div>
 
@@ -31,13 +31,10 @@ const About: React.FC = () => {
             <div className={styles.sectionText}>
               <h2>Our Mission</h2>
               <p>
-                At ConvertFlix, we believe that file optimization shouldn't be complicated or expensive. 
-                Our mission is to provide users with powerful, easy-to-use tools that make file compression 
-                and conversion accessible to everyone.
+                ConvertFlix is part of the <a href="https://taliyotechnologies.com/" target="_blank" rel="noopener noreferrer">Taliyo Technologies</a> product family. We make file optimization fast, secure and simple — so anyone can compress and convert without hassle.
               </p>
               <p>
-                Whether you're a professional designer, a student working on projects, or someone who just 
-                wants to save storage space, our tools are designed to meet your needs with simplicity and efficiency.
+                From professionals to students and teams, Taliyo’s engineering focuses on speed, quality and privacy to keep your workflow smooth and your files safe.
               </p>
             </div>
             <div className={styles.sectionVisual}>
@@ -59,14 +56,10 @@ const About: React.FC = () => {
             <div className={styles.sectionText}>
               <h2>Our Story</h2>
               <p>
-                ConvertFlix was born from a simple observation: existing file optimization tools were either 
-                too expensive, too complicated, or too limited in functionality. We saw an opportunity to 
-                create something better.
+                ConvertFlix was crafted at <a href="https://taliyotechnologies.com/" target="_blank" rel="noopener noreferrer">Taliyo Technologies</a> to solve a common problem: heavy files that slow you down. We set out to build tools that are powerful yet feel effortless.
               </p>
               <p>
-                Starting as a small team of developers and designers, we've grown into a trusted platform 
-                serving millions of users worldwide. Our commitment to quality, security, and user experience 
-                has remained constant throughout our journey.
+                Led by founder Harsh Budhauliya, the Taliyo team builds clean, reliable products that prioritize user experience, security and performance.
               </p>
             </div>
           </div>
@@ -127,30 +120,30 @@ const About: React.FC = () => {
               <div className={styles.memberAvatar}>
                 <User size={48} />
               </div>
-              <h3>Alex Chen</h3>
-              <p className={styles.memberRole}>Founder & CEO</p>
+              <h3>Harsh Budhauliya</h3>
+              <p className={styles.memberRole}>Founder, Taliyo Technologies</p>
               <p className={styles.memberBio}>
-                Former software engineer at major tech companies, passionate about creating user-friendly tools.
+                Leads product and engineering at Taliyo — crafting practical tools with a focus on speed, privacy and great UX.
               </p>
             </div>
             <div className={styles.teamMember}>
               <div className={styles.memberAvatar}>
                 <Users size={48} />
               </div>
-              <h3>Sarah Kim</h3>
-              <p className={styles.memberRole}>Head of Design</p>
+              <h3>Taliyo Engineering</h3>
+              <p className={styles.memberRole}>Product & Platform</p>
               <p className={styles.memberBio}>
-                UX/UI expert with 8+ years of experience in creating intuitive digital experiences.
+                Full‑stack developers focused on reliability, scale and performance across ConvertFlix and other Taliyo products.
               </p>
             </div>
             <div className={styles.teamMember}>
               <div className={styles.memberAvatar}>
                 <Code size={48} />
               </div>
-              <h3>Mike Rodriguez</h3>
-              <p className={styles.memberRole}>Lead Developer</p>
+              <h3>Taliyo Design</h3>
+              <p className={styles.memberRole}>Design & Experience</p>
               <p className={styles.memberBio}>
-                Full-stack developer specializing in performance optimization and scalable architecture.
+                Product designers crafting clean, accessible interfaces that help you get work done faster.
               </p>
             </div>
           </div>
