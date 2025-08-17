@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { connectDB } = require('./config/db');
 const { cleanupOldUploads } = require('./utils/retention');
 const { getSettings } = require('./utils/dataStore');

@@ -49,7 +49,6 @@ async function computeStats() {
       return ts && now - ts <= sevenDaysMs;
     }).length;
   }
-  const revenue = 0;
 
   return {
     totalUsers,
@@ -59,7 +58,6 @@ async function computeStats() {
     conversionRate: Math.round(conversionRate * 100) / 100,
     averageFileSize,
     activeUsers,
-    revenue,
   };
 }
 

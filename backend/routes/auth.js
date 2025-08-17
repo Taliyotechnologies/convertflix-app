@@ -8,6 +8,7 @@ const auth = require('../middleware/auth');
 const { getUsers, saveUsers } = require('../utils/dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const realtime = require('../utils/realtime');
 const useMongo = () => {
   try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
 };
@@ -97,6 +98,11 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Notify admin dashboards
+    try { realtime.emit('users_updated', { created: createdUserId }); } catch (_) {}
+    // Also refresh stats so Active Users updates immediately
+    try { realtime.emit('stats_metrics_updated', { reason: 'user_signup' }); } catch (_) {}
+
     res.status(201).json({
       success: true,
       token,
@@ -146,7 +152,21 @@ router.post('/login', async (req, res) => {
     // Update lastLogin for Mongo path (best-effort)
     if (useMongo() && dbUser && dbUser._id) {
       try { await User.updateOne({ _id: dbUser._id }, { $set: { lastLogin: new Date() } }); } catch (_) {}
+    } else {
+      // JSON storage: persist lastLogin so active users reflects recent logins
+      try {
+        const list = await getUsers();
+        const idx = (list || []).findIndex(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
+        if (idx >= 0) {
+          const updated = { ...list[idx], lastLogin: new Date().toISOString() };
+          const next = [...list];
+          next[idx] = updated;
+          await saveUsers(next);
+        }
+      } catch (_) {}
     }
+    // Refresh stats immediately (updates activeUsers on the dashboard)
+    try { realtime.emit('stats_metrics_updated', { reason: 'user_login' }); } catch (_) {}
 
     const userId = dbUser._id ? dbUser._id.toString() : dbUser.id;
     const token = jwt.sign(
@@ -341,9 +361,13 @@ router.post('/google', async (req, res) => {
           status: 'active',
           lastLogin: new Date(),
         });
+        try { realtime.emit('users_updated', { created: doc._id.toString() }); } catch (_) {}
+        try { realtime.emit('stats_metrics_updated', { reason: 'google_signup' }); } catch (_) {}
       } else {
         try { await User.updateOne({ _id: doc._id }, { $set: { lastLogin: new Date(), avatar } }); } catch (_) {}
+        try { realtime.emit('stats_metrics_updated', { reason: 'google_login' }); } catch (_) {}
       }
+
       const token = jwt.sign(
         { userId: doc._id.toString(), email: doc.email },
         process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',
@@ -378,7 +402,22 @@ router.post('/google', async (req, res) => {
           status: 'active'
         };
         await saveUsers([...(list || []), user]);
+        try { realtime.emit('users_updated', { created: user.id }); } catch (_) {}
+        try { realtime.emit('stats_metrics_updated', { reason: 'google_signup_json' }); } catch (_) {}
+      } else {
+        // Existing JSON user: update lastLogin and avatar to reflect activity
+        try {
+          const idx = (list || []).findIndex(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
+          if (idx >= 0) {
+            const updated = { ...list[idx], lastLogin: new Date().toISOString(), avatar };
+            const next = [...list];
+            next[idx] = updated;
+            await saveUsers(next);
+          }
+        } catch (_) {}
+        try { realtime.emit('stats_metrics_updated', { reason: 'google_login_json' }); } catch (_) {}
       }
+
       const token = jwt.sign(
         { userId: user.id, email: user.email },
         process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production',

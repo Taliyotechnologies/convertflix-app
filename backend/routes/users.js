@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const { getUsers, saveUsers } = require('../utils/dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const realtime = require('../utils/realtime');
 const useMongo = () => {
   try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
 };
@@ -58,6 +59,7 @@ router.post('/', auth, requireAdmin, async (req, res) => {
         createdAt: doc.createdAt,
         lastLogin: doc.lastLogin || null,
       };
+      try { realtime.emit('users_updated', { created: safe.id }); } catch (_) {}
       res.status(201).json(safe);
     } else {
       const list = await getUsers();
@@ -77,6 +79,7 @@ router.post('/', auth, requireAdmin, async (req, res) => {
       };
       await saveUsers([...(list || []), user]);
       const { password: _, ...safe } = user;
+      try { realtime.emit('users_updated', { created: safe.id }); } catch (_) {}
       res.status(201).json(safe);
     }
   } catch (error) {
@@ -92,6 +95,7 @@ router.delete('/:id', auth, requireAdmin, async (req, res) => {
     if (useMongo()) {
       const result = await User.deleteOne({ _id: id });
       if (result.deletedCount === 0) return res.status(404).json({ error: 'User not found' });
+      try { realtime.emit('users_updated', { deleted: id }); } catch (_) {}
       res.json({ success: true });
     } else {
       const list = await getUsers();
@@ -100,6 +104,7 @@ router.delete('/:id', auth, requireAdmin, async (req, res) => {
       const next = [...list];
       next.splice(idx, 1);
       await saveUsers(next);
+      try { realtime.emit('users_updated', { deleted: id }); } catch (_) {}
       res.json({ success: true });
     }
   } catch (error) {

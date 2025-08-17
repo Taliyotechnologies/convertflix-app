@@ -20,5 +20,16 @@
     "lastLogin": null,
     "role": "admin",
     "status": "active"
+  },
+  {
+    "id": "1755458949165-unye61",
+    "fullName": "Harsh Budhauliya",
+    "name": "Harsh Budhauliya",
+    "email": "harshbudhauliya882@gmail.com",
+    "password": "$2b$10$x0vUOMsy2pkUTZLfWxSRsu3ZfCWvV4UI0./fvAW9Yvuh08Ft9mR3e",
+    "createdAt": "2025-08-17T19:29:09.165Z",
+    "lastLogin": null,
+    "role": "admin",
+    "status": "active"
   }
 ]

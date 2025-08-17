@@ -5,7 +5,6 @@ import {
   Users as UsersIcon,
   FileText,
   Activity as ActivityIcon,
-  DollarSign,
   Database,
   PieChart as PieChartIcon,
   CheckCircle,
@@ -14,7 +13,7 @@ import {
 } from 'lucide-react';
 import { getStats, getFiles, getActivity } from '../../services/api';
 import { subscribeSSE, isSSEEnabled } from '../../services/realtime';
-import { formatFileSize, formatPercentage, formatDate, formatCurrency } from '../../utils/format';
+import { formatFileSize, formatPercentage, formatDate } from '../../utils/format';
 import type { FileRecord, ActivityLog, DashboardStats } from '../../types';
 import styles from './Analytics.module.css';
 import {
@@ -48,7 +47,6 @@ const Analytics: React.FC = () => {
     conversionRate: 0,
     averageFileSize: 0,
     activeUsers: 0,
-    revenue: 0,
   }));
 
   // Filters
@@ -332,13 +330,7 @@ const Analytics: React.FC = () => {
           <div className={styles.kpiValue}>{formatFileSize(stats.totalStorage)}</div>
         </div>
 
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiHeader}>
-            <DollarSign size={22} className={styles.kpiIcon} />
-            <span className={styles.kpiLabel}>Revenue</span>
-          </div>
-          <div className={styles.kpiValue}>{formatCurrency(stats.revenue)}</div>
-        </div>
+        
       </div>
 
       {/* Charts Row */}

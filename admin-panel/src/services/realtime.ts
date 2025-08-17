@@ -1,4 +1,4 @@
-import type { FileRecord, ActivityLog, DashboardStats } from '../types';
+import type { FileRecord, ActivityLog, DashboardStats, User } from '../types';
 
 const BASE: string = (import.meta as any).env?.VITE_API_BASE_URL as string || '';
 
@@ -8,6 +8,8 @@ export type RealtimeHandlers = {
   onActivity?: (log: ActivityLog) => void;
   onActivitiesReplace?: (logs: ActivityLog[]) => void;
   onStats?: (stats: DashboardStats) => void;
+  onUsersReplace?: (users: User[]) => void;
+  onUserUpsert?: (user: User) => void;
 };
 
 function buildSSEUrl(): string | undefined {
@@ -39,6 +41,10 @@ function looksLikeActivityLog(v: any): v is ActivityLog {
   return v && typeof v.id === 'string' && typeof v.message === 'string' && typeof v.timestamp === 'string';
 }
 
+function looksLikeUser(v: any): v is User {
+  return v && typeof v.id === 'string' && typeof v.email === 'string' && typeof v.createdAt === 'string';
+}
+
 export function subscribeSSE(handlers: RealtimeHandlers): () => void {
   const url = buildSSEUrl();
   if (!url) {
@@ -62,6 +68,10 @@ export function subscribeSSE(handlers: RealtimeHandlers): () => void {
         handlers.onActivitiesReplace?.(payload as ActivityLog[]);
         return;
       }
+      if (looksLikeUser(payload[0])) {
+        handlers.onUsersReplace?.(payload as User[]);
+        return;
+      }
     }
 
     if (looksLikeFileRecord(payload)) {
@@ -78,6 +88,11 @@ export function subscribeSSE(handlers: RealtimeHandlers): () => void {
       handlers.onActivity?.(payload as ActivityLog);
       return;
     }
+
+    if (looksLikeUser(payload)) {
+      handlers.onUserUpsert?.(payload as User);
+      return;
+    }
   };
 
   es.onmessage = (evt) => {
@@ -91,7 +106,7 @@ export function subscribeSSE(handlers: RealtimeHandlers): () => void {
   };
 
   // Optional named events if the server emits them
-  ['file', 'files', 'stats', 'activity', 'activities'].forEach((eventName) => {
+  ['file', 'files', 'stats', 'activity', 'activities', 'users'].forEach((eventName) => {
     es.addEventListener(eventName, (evt: MessageEvent) => {
       try {
         const data = JSON.parse(evt.data);

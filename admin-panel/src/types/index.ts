@@ -31,7 +31,6 @@ export interface DashboardStats {
   conversionRate: number;
   averageFileSize: number;
   activeUsers: number;
-  revenue: number;
 }
 
 export interface AdminSettings {

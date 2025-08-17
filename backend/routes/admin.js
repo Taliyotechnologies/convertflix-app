@@ -60,6 +60,40 @@ router.get('/stream', auth, async (req, res) => {
       send('activities', ordered);
     }
     if (Array.isArray(files)) send('files', files);
+    // Initial latest users snapshot (top 50 newest)
+    try {
+      let latestUsers = [];
+      if (useMongo()) {
+        const docs = await User.find({}).sort({ createdAt: -1 }).limit(50).lean();
+        latestUsers = (docs || []).map(u => ({
+          id: u._id.toString(),
+          email: u.email,
+          name: u.fullName || '',
+          role: u.role || 'user',
+          createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+          lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
+          status: u.status || 'active',
+          avatar: u.avatar
+        }));
+      } else {
+        const list = await getUsers();
+        latestUsers = (list || [])
+          .slice()
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+          .slice(0, 50)
+          .map(u => ({
+            id: u.id,
+            email: u.email,
+            name: u.name || u.fullName || '',
+            role: u.role || 'user',
+            createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+            lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
+            status: u.status || 'active',
+            avatar: u.avatar
+          }));
+      }
+      send('users', latestUsers);
+    } catch (_) {}
   } catch (_) {}
 
   // Heartbeat to keep connection alive
@@ -73,6 +107,40 @@ router.get('/stream', auth, async (req, res) => {
       const s = await computeStats();
       send('stats', s);
       send('files', listFiles(500));
+      // Periodically refresh latest users as a fallback
+      try {
+        let latest = [];
+        if (useMongo()) {
+          const docs = await User.find({}).sort({ createdAt: -1 }).limit(50).lean();
+          latest = (docs || []).map(u => ({
+            id: u._id.toString(),
+            email: u.email,
+            name: u.fullName || '',
+            role: u.role || 'user',
+            createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+            lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
+            status: u.status || 'active',
+            avatar: u.avatar
+          }));
+        } else {
+          const list = await getUsers();
+          latest = (list || [])
+            .slice()
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+            .slice(0, 50)
+            .map(u => ({
+              id: u.id,
+              email: u.email,
+              name: u.name || u.fullName || '',
+              role: u.role || 'user',
+              createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+              lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
+              status: u.status || 'active',
+              avatar: u.avatar
+            }));
+        }
+        send('users', latest);
+      } catch (_) {}
     } catch (_) {}
   }, 10000);
 
@@ -97,12 +165,51 @@ router.get('/stream', auth, async (req, res) => {
   };
   realtime.on('files_updated', onFilesUpdated);
 
+  // Live users -> send latest list
+  const onUsersUpdated = async () => {
+    try {
+      let latest = [];
+      if (useMongo()) {
+        const docs = await User.find({}).sort({ createdAt: -1 }).limit(50).lean();
+        latest = (docs || []).map(u => ({
+          id: u._id.toString(),
+          email: u.email,
+          name: u.fullName || '',
+          role: u.role || 'user',
+          createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+          lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
+          status: u.status || 'active',
+          avatar: u.avatar
+        }));
+      } else {
+        const list = await getUsers();
+        latest = (list || [])
+          .slice()
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+          .slice(0, 50)
+          .map(u => ({
+            id: u.id,
+            email: u.email,
+            name: u.name || u.fullName || '',
+            role: u.role || 'user',
+            createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+            lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
+            status: u.status || 'active',
+            avatar: u.avatar
+          }));
+      }
+      send('users', latest);
+    } catch (_) {}
+  };
+  realtime.on('users_updated', onUsersUpdated);
+
   req.on('close', () => {
     clearInterval(heartbeat);
     clearInterval(periodic);
     try { realtime.off ? realtime.off('activity', onActivity) : realtime.removeListener('activity', onActivity); } catch (_) {}
     try { realtime.off ? realtime.off('stats_metrics_updated', onMetrics) : realtime.removeListener('stats_metrics_updated', onMetrics); } catch (_) {}
     try { realtime.off ? realtime.off('files_updated', onFilesUpdated) : realtime.removeListener('files_updated', onFilesUpdated); } catch (_) {}
+    try { realtime.off ? realtime.off('users_updated', onUsersUpdated) : realtime.removeListener('users_updated', onUsersUpdated); } catch (_) {}
     try { res.end(); } catch (_) {}
   });
 });
@@ -164,7 +271,7 @@ router.get('/users', auth, async (req, res) => {
         query.$or = [{ fullName: rx }, { email: rx }];
       }
       const lim = parseInt(limit);
-      const docs = await User.find(query).limit(Number.isNaN(lim) ? 0 : lim).lean();
+      const docs = await User.find(query).sort({ createdAt: -1 }).limit(Number.isNaN(lim) ? 0 : lim).lean();
       const mapped = (docs || []).map(u => ({
         id: u._id.toString(),
         email: u.email,
@@ -198,6 +305,8 @@ router.get('/users', auth, async (req, res) => {
         );
       }
 
+      // Sort by newest first
+      filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       const lim = parseInt(limit);
       const result = Number.isNaN(lim) ? filtered : filtered.slice(0, lim);
       res.json(result);
