@@ -7,7 +7,7 @@ function detectType(ext) {
   if (['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a'].includes(ext)) return 'audio';
   if (ext === '.pdf') return 'pdf';
   if (['.doc', '.docx', '.txt'].includes(ext)) return 'document';
-  return 'other';
+  return 'document';
 }
 
 function listFiles(limit) {
@@ -30,7 +30,7 @@ function listFiles(limit) {
         const type = detectType(ext);
 
         const isProcessed = file.startsWith('converted-') || file.startsWith('compressed-');
-        const status = isProcessed ? 'completed' : 'uploaded';
+        const status = isProcessed ? 'completed' : 'processing';
 
         const originalFormat = ext.replace('.', '');
         let convertedFormat = undefined;
