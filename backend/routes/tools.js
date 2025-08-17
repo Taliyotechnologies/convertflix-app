@@ -89,7 +89,7 @@ router.post('/compress-image', uploadImage, async (req, res) => {
             await p1.jpeg({ quality: 65, mozjpeg: false, progressive: false }).toFile(outputOriginalFmt);
             candidates.push(outputOriginalFmt);
           } else if (ext === '.png') {
-            await p1.png({ compressionLevel: 6, palette: false }).toFile(outputOriginalFmt);
+            await p1.png({ compressionLevel: 6, palette: true }).toFile(outputOriginalFmt);
             candidates.push(outputOriginalFmt);
           } else if (ext === '.webp') {
             await p1.webp({ quality: 70 }).toFile(outputOriginalFmt);
@@ -102,6 +102,11 @@ router.post('/compress-image', uploadImage, async (req, res) => {
             candidates.push(outputOriginalFmt);
           }
         } catch (_) {}
+        // Also try a fast WebP candidate and pick it only if smaller than original
+        try {
+          await sharp(inputPath, { sequentialRead: true }).webp({ quality: 75 }).toFile(outputWebp);
+          candidates.push(outputWebp);
+        } catch (_) {}
       } else {
         // QUALITY: try multiple candidates and pick the smallest (reduced encoding effort for speed)
         try {
@@ -109,7 +114,7 @@ router.post('/compress-image', uploadImage, async (req, res) => {
           if (ext === '.jpg' || ext === '.jpeg') {
             await p1.jpeg({ quality: 55, mozjpeg: false, progressive: false }).toFile(outputOriginalFmt);
           } else if (ext === '.png') {
-            await p1.png({ compressionLevel: 7, palette: false }).toFile(outputOriginalFmt);
+            await p1.png({ compressionLevel: 7, palette: true }).toFile(outputOriginalFmt);
           } else if (ext === '.webp') {
             await p1.webp({ quality: 70 }).toFile(outputOriginalFmt);
           } else if (ext === '.avif') {
@@ -129,42 +134,36 @@ router.post('/compress-image', uploadImage, async (req, res) => {
         } catch (_) {}
       }
 
-      // Choose smallest; prefer candidates smaller than original; fall back to smallest overall
+      // Choose the smallest candidate that is actually smaller than the original
       let chosen = null;
       let chosenSize = Number.MAX_SAFE_INTEGER;
       for (const p of candidates) {
         if (!fs.existsSync(p)) continue;
         const s = fs.statSync(p).size;
-        const isSmallerThanOriginal = s < originalSize;
-        if (isSmallerThanOriginal && s < chosenSize) {
+        if (s < originalSize && s < chosenSize) {
           chosen = p; chosenSize = s;
-        }
-      }
-      if (!chosen) {
-        for (const p of candidates) {
-          if (!fs.existsSync(p)) continue;
-          const s = fs.statSync(p).size;
-          if (s < chosenSize) { chosen = p; chosenSize = s; }
         }
       }
       return { chosen, originalSize };
     };
 
     const { chosen, originalSize } = await generateCandidates();
-    const finalPath = chosen || outputOriginalFmt;
+    const finalPath = chosen || inputPath;
 
     // Get file sizes
     const compressedSize = fs.statSync(finalPath).size;
     const compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(2);
 
-    // Clean up original file (handle Windows EBUSY/EPERM gracefully)
-    try {
-      fs.unlinkSync(inputPath);
-    } catch (err) {
-      if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
-        setTimeout(() => {
-          try { fs.unlinkSync(inputPath); } catch (_) {}
-        }, 500);
+    // Clean up depending on whether a smaller file was produced
+    if (finalPath !== inputPath) {
+      try {
+        fs.unlinkSync(inputPath);
+      } catch (err) {
+        if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
+          setTimeout(() => {
+            try { fs.unlinkSync(inputPath); } catch (_) {}
+          }, 500);
+        }
       }
     }
     // Remove other candidate files except the final one
@@ -273,16 +272,28 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
       fs.renameSync(retryPath, outputPath);
     }
     const finalSize = fs.statSync(outputPath).size;
-    let compressionRatio = ((originalSize - finalSize) / originalSize * 100).toFixed(2);
+    let useOriginal = false;
+    let deliveredPath = outputPath;
+    let deliveredSize = finalSize;
+    if (finalSize >= originalSize) {
+      // If no savings, keep original file
+      try { fs.unlinkSync(outputPath); } catch (_) {}
+      deliveredPath = inputPath;
+      deliveredSize = originalSize;
+      useOriginal = true;
+    }
+    let compressionRatio = ((originalSize - deliveredSize) / originalSize * 100).toFixed(2);
 
-    // Clean up original file (handle Windows EBUSY/EPERM gracefully)
-    try {
-      fs.unlinkSync(inputPath);
-    } catch (err) {
-      if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
-        setTimeout(() => {
-          try { fs.unlinkSync(inputPath); } catch (_) {}
-        }, 500);
+    // Clean up original file only if we are delivering the compressed output (handle Windows EBUSY/EPERM gracefully)
+    if (deliveredPath !== inputPath) {
+      try {
+        fs.unlinkSync(inputPath);
+      } catch (err) {
+        if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
+          setTimeout(() => {
+            try { fs.unlinkSync(inputPath); } catch (_) {}
+          }, 500);
+        }
       }
     }
 
@@ -292,10 +303,10 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
   try {
       await addActivity({
         type: 'video_compress',
-        message: `Video compressed: ${path.basename(outputPath)} savings ${compressionRatio}%`,
+        message: `Video compressed: ${path.basename(deliveredPath)} savings ${compressionRatio}%`,
         severity: 'info',
         userId: (req.user && req.user.userId) ? req.user.userId : 'anonymous',
-        meta: { originalSize, compressedSize: finalSize }
+        meta: { originalSize, compressedSize: deliveredSize }
       });
     } catch (_) {}
 
@@ -303,9 +314,9 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
       success: true,
       message: 'Video compressed successfully',
       originalSize,
-    compressedSize: finalSize,
+    compressedSize: deliveredSize,
     savings: compressionRatio,
-      downloadUrl: `/uploads/${path.basename(outputPath)}`
+      downloadUrl: `/uploads/${path.basename(deliveredPath)}`
     });
   } catch (error) {
     console.error('Video compression error:', error);
@@ -352,18 +363,26 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
         .save(outputPath);
     });
 
-    // Get compressed file size
-    const compressedSize = fs.statSync(outputPath).size;
+    // Get compressed file size and ensure no size increase
+    let compressedSize = fs.statSync(outputPath).size;
+    let finalPath = outputPath;
+    if (compressedSize >= originalSize) {
+      try { fs.unlinkSync(outputPath); } catch (_) {}
+      finalPath = inputPath;
+      compressedSize = originalSize;
+    }
     const compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(2);
 
-    // Clean up original file (handle Windows EBUSY/EPERM gracefully)
-    try {
-      fs.unlinkSync(inputPath);
-    } catch (err) {
-      if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
-        setTimeout(() => {
-          try { fs.unlinkSync(inputPath); } catch (_) {}
-        }, 500);
+    // Clean up original file only if a smaller compressed file is used (handle Windows EBUSY/EPERM gracefully)
+    if (finalPath !== inputPath) {
+      try {
+        fs.unlinkSync(inputPath);
+      } catch (err) {
+        if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
+          setTimeout(() => {
+            try { fs.unlinkSync(inputPath); } catch (_) {}
+          }, 500);
+        }
       }
     }
 
@@ -373,7 +392,7 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
     try {
       await addActivity({
         type: 'audio_compress',
-        message: `Audio compressed: ${path.basename(outputPath)} savings ${compressionRatio}%`,
+        message: `Audio compressed: ${path.basename(finalPath)} savings ${compressionRatio}%`,
         severity: 'info',
         userId: (req.user && req.user.userId) ? req.user.userId : 'anonymous',
         meta: { originalSize, compressedSize }
@@ -386,7 +405,7 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
       originalSize,
       compressedSize,
       savings: compressionRatio,
-      downloadUrl: `/uploads/${path.basename(outputPath)}`
+      downloadUrl: `/uploads/${path.basename(finalPath)}`
     });
   } catch (error) {
     console.error('Audio compression error:', error);
@@ -494,8 +513,17 @@ router.post('/compress-pdf', uploadPDF, async (req, res) => {
       }
     }
 
-    // Clean original upload
-    try { fs.unlinkSync(inputPath); } catch (_) {}
+    // If the compressed result is not smaller, keep the original file
+    if (compressedSize >= originalSize) {
+      // Prefer original when no size savings
+      workingPath = inputPath;
+      compressedSize = originalSize;
+    }
+
+    // Clean original upload only if we produced a smaller file
+    if (workingPath !== inputPath) {
+      try { fs.unlinkSync(inputPath); } catch (_) {}
+    }
 
     const savingsPercent = ((originalSize - compressedSize) / originalSize * 100).toFixed(2);
     try { await recordFileProcessed({ size: originalSize, kind: 'compressed' }); } catch (_) {}

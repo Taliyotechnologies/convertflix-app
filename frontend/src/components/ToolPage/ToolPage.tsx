@@ -222,12 +222,21 @@ const ToolPage: React.FC<ToolPageProps> = ({
       const link = document.createElement('a');
       link.href = url;
       
-      // Create proper filename with correct extension for conversion
+      // Create proper filename with correct extension
       let downloadFilename = `processed_${file?.name || 'file'}`;
-      if (actionType === 'convert' && file && targetFormat) {
+      if (file) {
         const originalName = file.name;
-        const baseName = originalName.substring(0, originalName.lastIndexOf('.'));
-        downloadFilename = `${baseName}.${targetFormat}`;
+        const hasDot = originalName.includes('.');
+        const baseName = hasDot ? originalName.substring(0, originalName.lastIndexOf('.')) : originalName;
+        if (actionType === 'convert' && targetFormat) {
+          downloadFilename = `${baseName}.${targetFormat}`;
+        } else if (result.downloadUrl) {
+          const dlName = result.downloadUrl.split('/').pop() || '';
+          const dlExt = dlName && dlName.includes('.') ? dlName.substring(dlName.lastIndexOf('.') + 1) : '';
+          if (dlExt) {
+            downloadFilename = `${baseName}.${dlExt}`;
+          }
+        }
       }
       
       link.download = downloadFilename;
