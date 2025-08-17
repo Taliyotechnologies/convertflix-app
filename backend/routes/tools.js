@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { uploadImage, uploadVideo, uploadAudio, uploadPDF, uploadAny } = require('../middleware/upload');
 const { addActivity } = require('../utils/dataStore');
+// Speed preset for tools: 'fast' | 'balanced' | 'quality' (default: 'fast')
+const SPEED = (process.env.TOOLS_SPEED_PRESET || process.env.SPEED_PRESET || 'fast').toLowerCase();
 
 // @route   POST /api/tools/compress-image
 // @desc    Compress image file
@@ -75,39 +77,57 @@ router.post('/compress-image', uploadImage, async (req, res) => {
     const outputWebp = path.join(outputDir, `compressed-${baseName}.webp`);
     const outputAvif = path.join(outputDir, `compressed-${baseName}.avif`);
     
-    // Generate multiple candidates and pick the smallest
+    // Generate candidates. In FAST/BALANCED, do a single fast pass; in QUALITY, try multiple and pick smallest.
     const generateCandidates = async () => {
       const candidates = [];
       const originalSize = fs.statSync(inputPath).size;
-
-      // Same-format compression
-      try {
-        const p1 = sharp(inputPath);
-        if (ext === '.jpg' || ext === '.jpeg') {
-          await p1.jpeg({ quality: 55, mozjpeg: true, progressive: true }).toFile(outputOriginalFmt);
-        } else if (ext === '.png') {
-          await p1.png({ compressionLevel: 9, palette: true, effort: 10 }).toFile(outputOriginalFmt);
-        } else if (ext === '.webp') {
-          await p1.webp({ quality: 60 }).toFile(outputOriginalFmt);
-        } else if (ext === '.avif') {
-          await p1.avif({ quality: 35 }).toFile(outputOriginalFmt);
-        } else {
-          await p1.jpeg({ quality: 60, mozjpeg: true, progressive: true }).toFile(outputOriginalFmt);
-        }
-        candidates.push(outputOriginalFmt);
-      } catch (_) {}
-
-      // WebP candidate (good general-purpose lossy)
-      try {
-        await sharp(inputPath).webp({ quality: 75 }).toFile(outputWebp);
-        candidates.push(outputWebp);
-      } catch (_) {}
-
-      // AVIF candidate (stronger compression)
-      try {
-        await sharp(inputPath).avif({ quality: 35, effort: 4 }).toFile(outputAvif);
-        candidates.push(outputAvif);
-      } catch (_) {}
+      if (SPEED !== 'quality') {
+        // FAST/BALANCED: single-pass, low-effort encodes
+        try {
+          const p1 = sharp(inputPath, { sequentialRead: true });
+          if (ext === '.jpg' || ext === '.jpeg') {
+            await p1.jpeg({ quality: 65, mozjpeg: false, progressive: false }).toFile(outputOriginalFmt);
+            candidates.push(outputOriginalFmt);
+          } else if (ext === '.png') {
+            await p1.png({ compressionLevel: 6, palette: false }).toFile(outputOriginalFmt);
+            candidates.push(outputOriginalFmt);
+          } else if (ext === '.webp') {
+            await p1.webp({ quality: 70 }).toFile(outputOriginalFmt);
+            candidates.push(outputOriginalFmt);
+          } else if (ext === '.avif') {
+            await p1.avif({ quality: 40, effort: 2 }).toFile(outputOriginalFmt);
+            candidates.push(outputOriginalFmt);
+          } else {
+            await p1.jpeg({ quality: 65, mozjpeg: false, progressive: false }).toFile(outputOriginalFmt);
+            candidates.push(outputOriginalFmt);
+          }
+        } catch (_) {}
+      } else {
+        // QUALITY: try multiple candidates and pick the smallest (reduced encoding effort for speed)
+        try {
+          const p1 = sharp(inputPath, { sequentialRead: true });
+          if (ext === '.jpg' || ext === '.jpeg') {
+            await p1.jpeg({ quality: 55, mozjpeg: false, progressive: false }).toFile(outputOriginalFmt);
+          } else if (ext === '.png') {
+            await p1.png({ compressionLevel: 7, palette: false }).toFile(outputOriginalFmt);
+          } else if (ext === '.webp') {
+            await p1.webp({ quality: 70 }).toFile(outputOriginalFmt);
+          } else if (ext === '.avif') {
+            await p1.avif({ quality: 35, effort: 2 }).toFile(outputOriginalFmt);
+          } else {
+            await p1.jpeg({ quality: 60, mozjpeg: false, progressive: false }).toFile(outputOriginalFmt);
+          }
+          candidates.push(outputOriginalFmt);
+        } catch (_) {}
+        try {
+          await sharp(inputPath, { sequentialRead: true }).webp({ quality: 75 }).toFile(outputWebp);
+          candidates.push(outputWebp);
+        } catch (_) {}
+        try {
+          await sharp(inputPath, { sequentialRead: true }).avif({ quality: 35, effort: 2 }).toFile(outputAvif);
+          candidates.push(outputAvif);
+        } catch (_) {}
+      }
 
       // Choose smallest; prefer candidates smaller than original; fall back to smallest overall
       let chosen = null;
@@ -208,55 +228,19 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
 
     // Get original file size
     const originalSize = fs.statSync(inputPath).size;
+    // Choose preset/CRF for speed vs quality
+    const preset = SPEED === 'quality' ? 'slow' : (SPEED === 'balanced' ? 'fast' : 'veryfast');
+    const crf = SPEED === 'quality' ? 20 : (SPEED === 'balanced' ? 22 : 24);
 
-    // Probe original bitrate to ensure compressed file is smaller
-    const metadata = await new Promise((resolve) => {
-      try {
-        ffmpeg.ffprobe(inputPath, (err, data) => {
-          if (err) return resolve(null);
-          resolve(data);
-        });
-      } catch (_) {
-        resolve(null);
-      }
-    });
-
-    const durationSec = metadata?.format?.duration || 0;
-    const formatBitRate = metadata?.format?.bit_rate ? parseInt(metadata.format.bit_rate, 10) : 0;
-    const audioStream = Array.isArray(metadata?.streams) ? metadata.streams.find(s => s.codec_type === 'audio') : undefined;
-    const videoStream = Array.isArray(metadata?.streams) ? metadata.streams.find(s => s.codec_type === 'video') : undefined;
-    const audioBitRateOrig = audioStream?.bit_rate ? parseInt(audioStream.bit_rate, 10) : 128000;
-    const videoBitRateOrig = videoStream?.bit_rate ? parseInt(videoStream.bit_rate, 10) : 0;
-    let totalBitRateOrig = formatBitRate || (durationSec > 0 ? Math.floor((originalSize * 8) / Math.max(1, durationSec)) : (videoBitRateOrig + audioBitRateOrig));
-    if (!totalBitRateOrig || Number.isNaN(totalBitRateOrig)) {
-      totalBitRateOrig = 2000000; // 2 Mbps conservative default
-    }
-
-    // Target: at least ~25% smaller combined bitrate
-    const targetTotalBitRate = Math.max(400000, Math.floor(totalBitRateOrig * 0.75));
-    // Audio target between 64k and 128k, not above original
-    let targetAudioBitRate = Math.max(64000, Math.min(128000, Math.floor(audioBitRateOrig * 0.75)));
-    if (audioBitRateOrig && targetAudioBitRate >= audioBitRateOrig) {
-      targetAudioBitRate = Math.max(64000, Math.floor(audioBitRateOrig * 0.9));
-    }
-    // Video target is remaining; ensure not above original and not too low
-    let targetVideoBitRate = Math.max(300000, targetTotalBitRate - targetAudioBitRate);
-    const videoOrigFallback = videoBitRateOrig || (totalBitRateOrig - audioBitRateOrig);
-    if (videoOrigFallback && targetVideoBitRate >= videoOrigFallback) {
-      targetVideoBitRate = Math.max(300000, Math.floor(videoOrigFallback * 0.85));
-    }
-
-    // Compress video
+    // Compress video with single-pass CRF encode
     await new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .videoCodec('libx264')
         .audioCodec('aac')
         .outputOptions([
-          '-preset', 'slow',
-          '-b:v', `${Math.floor(targetVideoBitRate / 1000)}k`,
-          '-maxrate', `${Math.floor(targetVideoBitRate * 1.1 / 1000)}k`,
-          '-bufsize', `${Math.floor(targetVideoBitRate * 2 / 1000)}k`,
-          '-b:a', `${Math.floor(targetAudioBitRate / 1000)}k`,
+          '-preset', preset,
+          '-crf', String(crf),
+          '-b:a', '96k',
           '-movflags', '+faststart',
           '-pix_fmt', 'yuv420p'
         ])
@@ -265,33 +249,28 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
         .save(outputPath);
     });
 
-    // Get compressed file size
-    const compressedSize = fs.statSync(outputPath).size;
-  let compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(2);
-
-  // Safety: if not smaller, try a second pass with stronger settings
-  if (compressedSize >= originalSize) {
-    const retryPath = path.join(path.dirname(inputPath), `compressed2-${req.file.filename}`);
-    await new Promise((resolve, reject) => {
-      const ffmpeg = require('fluent-ffmpeg');
-      const ffmpegPath = require('ffmpeg-static');
-      if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
-      ffmpeg(outputPath)
-        .outputOptions([
-          '-preset', 'veryslow',
-          '-crf', '28'
-        ])
-        .on('end', resolve)
-        .on('error', reject)
-        .save(retryPath);
-    });
-    try {
-      fs.unlinkSync(outputPath);
-    } catch (_) {}
-    fs.renameSync(retryPath, outputPath);
-  }
-  const finalSize = fs.statSync(outputPath).size;
-  compressionRatio = ((originalSize - finalSize) / originalSize * 100).toFixed(2);
+    // Safety: if not smaller, quick retry with higher CRF
+    let compressedSize = fs.statSync(outputPath).size;
+    if (compressedSize >= originalSize) {
+      const retryPath = path.join(path.dirname(inputPath), `compressed2-${req.file.filename}`);
+      await new Promise((resolve, reject) => {
+        ffmpeg(outputPath)
+          .outputOptions([
+            '-preset', 'veryfast',
+            '-crf', '30',
+            '-b:a', '96k',
+            '-movflags', '+faststart',
+            '-pix_fmt', 'yuv420p'
+          ])
+          .on('end', resolve)
+          .on('error', reject)
+          .save(retryPath);
+      });
+      try { fs.unlinkSync(outputPath); } catch (_) {}
+      fs.renameSync(retryPath, outputPath);
+    }
+    const finalSize = fs.statSync(outputPath).size;
+    let compressionRatio = ((originalSize - finalSize) / originalSize * 100).toFixed(2);
 
     // Clean up original file (handle Windows EBUSY/EPERM gracefully)
     try {
@@ -355,10 +334,12 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
     const originalSize = fs.statSync(inputPath).size;
 
     // Compress audio
+    const targetAudioBitrate = SPEED === 'quality' ? '192k' : (SPEED === 'balanced' ? '128k' : '96k');
     await new Promise((resolve, reject) => {
       ffmpeg(inputPath)
+        .noVideo()
         .audioCodec('aac')
-        .audioBitrate('128k')
+        .audioBitrate(targetAudioBitrate)
         .outputOptions(['-movflags', '+faststart'])
         .on('end', resolve)
         .on('error', reject)
@@ -485,14 +466,17 @@ router.post('/compress-pdf', uploadPDF, async (req, res) => {
       });
     };
 
-    // Step 2: If pdf-lib failed or savings < 30%, try GS '/ebook'; if still low, try '/screen'
+    // Step 2: If pdf-lib failed or savings below threshold, try GS (threshold depends on SPEED)
     const currentSavings = ((originalSize - compressedSize) / originalSize) * 100;
-    if (!pdfLibOk || currentSavings < 30) {
+    const gsThreshold = SPEED === 'quality' ? 30 : (SPEED === 'balanced' ? 25 : 18);
+    if (!pdfLibOk || currentSavings < gsThreshold) {
       const gs1 = await runGhostscript(workingPath, '/ebook', 110);
       let best = gs1 && gs1.size < compressedSize ? gs1 : null;
-      if (!best || ((originalSize - best.size) / originalSize) * 100 < 30) {
-        const gs2 = await runGhostscript(workingPath, '/screen', 96);
-        if (gs2 && (!best || gs2.size < best.size)) best = gs2;
+      if (SPEED === 'quality') {
+        if (!best || ((originalSize - best.size) / originalSize) * 100 < gsThreshold) {
+          const gs2 = await runGhostscript(workingPath, '/screen', 96);
+          if (gs2 && (!best || gs2.size < best.size)) best = gs2;
+        }
       }
       if (best && best.size < compressedSize) {
         try { if (workingPath !== inputPath) fs.unlinkSync(workingPath); } catch (_) {}
@@ -655,12 +639,14 @@ router.post('/convert-video', uploadVideo, async (req, res) => {
         .save(outputPath);
     });
     const tryReencode = () => new Promise((resolve, reject) => {
+      const presetCv = SPEED === 'quality' ? 'slow' : (SPEED === 'balanced' ? 'fast' : 'veryfast');
+      const crfCv = SPEED === 'quality' ? 20 : (SPEED === 'balanced' ? 22 : 24);
       ffmpeg(inputPath)
         .videoCodec('libx264')
         .audioCodec('aac')
         .outputOptions([
-          '-preset', 'slow',
-          '-crf', '18',
+          '-preset', presetCv,
+          '-crf', String(crfCv),
           '-movflags', '+faststart'
         ])
         .on('end', resolve)

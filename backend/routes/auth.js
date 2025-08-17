@@ -422,6 +422,50 @@ const initializeDemoUsers = async () => {
 
   const list = await getUsers();
   const next = [...(list || [])];
+  // Seed/update admin from environment variables if provided
+  const envEmail = (process.env.INIT_ADMIN_EMAIL || '').toLowerCase().trim();
+  const envPassword = process.env.INIT_ADMIN_PASSWORD;
+  const envName = process.env.INIT_ADMIN_NAME || 'Admin User';
+  if (envEmail && envPassword) {
+    const idx = next.findIndex(u => (u.email || '').toLowerCase() === envEmail);
+    if (idx === -1) {
+      const hashedEnv = await bcrypt.hash(envPassword, 10);
+      next.push({
+        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8),
+        fullName: envName,
+        name: envName,
+        email: envEmail,
+        password: hashedEnv,
+        createdAt: new Date().toISOString(),
+        lastLogin: null,
+        role: 'admin',
+        status: 'active'
+      });
+      console.log(`✅ Seeded env admin (JSON): ${envEmail}`);
+    } else {
+      const user = { ...next[idx] };
+      let updated = false;
+      if ((user.role || 'user') !== 'admin') { user.role = 'admin'; updated = true; }
+      if (envName && (user.fullName !== envName || user.name !== envName)) { user.fullName = envName; user.name = envName; updated = true; }
+      try {
+        const match = await bcrypt.compare(envPassword, user.password || '');
+        if (!match) {
+          user.password = await bcrypt.hash(envPassword, 10);
+          updated = true;
+        }
+      } catch (_) {
+        user.password = await bcrypt.hash(envPassword, 10);
+        updated = true;
+      }
+      if (updated) {
+        next[idx] = user;
+        console.log(`🔁 Updated env admin (JSON): ${envEmail}`);
+      } else {
+        console.log(`ℹ️ Env admin already up to date (JSON): ${envEmail}`);
+      }
+    }
+  }
+
   for (const demoUser of demoUsers) {
     const exists = next.some(u => (u.email || '').toLowerCase() === demoUser.email.toLowerCase());
     if (!exists) {
