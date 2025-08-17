@@ -151,6 +151,8 @@ async function recordFileProcessed({ size = 0, kind = 'processed', when = new Da
 
   await saveMetrics(m);
   try { realtime.emit('stats_metrics_updated', m); } catch (_) {}
+  // Also signal that files listing likely changed (new output file produced)
+  try { realtime.emit('files_updated', { reason: 'file_processed' }); } catch (_) {}
   return m;
 }
 
