@@ -135,7 +135,7 @@ const Owner: React.FC = () => {
             </div>
             <div className={styles.personalVisual}>
               <div className={styles.personalIcon}>
-                <Mountain size={48} />
+                <Mountain size={96} />
               </div>
             </div>
           </div>

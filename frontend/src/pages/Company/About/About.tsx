@@ -39,7 +39,7 @@ const About: React.FC = () => {
             </div>
             <div className={styles.sectionVisual}>
               <div className={styles.missionIcon}>
-                <Target size={48} />
+                <Target size={120} />
               </div>
             </div>
           </div>
@@ -50,7 +50,7 @@ const About: React.FC = () => {
           <div className={styles.sectionContent}>
             <div className={styles.sectionVisual}>
               <div className={styles.storyIcon}>
-                <BookOpen size={48} />
+                <BookOpen size={120} />
               </div>
             </div>
             <div className={styles.sectionText}>

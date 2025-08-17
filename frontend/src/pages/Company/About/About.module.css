@@ -36,7 +36,7 @@
 }
 
 /* Themed links */
-.about a {
+.about a:not(.ctaPrimary):not(.ctaSecondary) {
   color: var(--accent-primary);
   text-decoration: none;
   font-weight: 600;
@@ -91,6 +91,35 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  will-change: transform;
+  animation: iconFloat 6s ease-in-out infinite;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.missionIcon::after,
+.storyIcon::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 999px;
+  border: 2px solid var(--accent-primary);
+  opacity: 0.35;
+  animation: pulse 2.4s ease-out infinite;
+}
+
+/* Icon animations */
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  70% { transform: scale(1.2); opacity: 0; }
+  100% { opacity: 0; }
 }
 
 /* Values Section */
@@ -251,6 +280,10 @@
   color: white;
   box-shadow: var(--shadow-md);
 }
+
+.cta .ctaPrimary { color: #fff; }
+.cta .ctaPrimary:visited { color: #fff; }
+.cta .ctaPrimary:focus { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 
 .ctaPrimary:hover {
   transform: translateY(-2px);
