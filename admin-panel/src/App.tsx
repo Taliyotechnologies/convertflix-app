@@ -34,9 +34,6 @@ const AppContent: React.FC = () => {
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
-        <footer className={styles.footer}>
-          made by taliyo technologies
-        </footer>
       </div>
     </div>
   );
@@ -51,3 +48,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

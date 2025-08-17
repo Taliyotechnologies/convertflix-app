@@ -64,8 +64,8 @@ async function ensureEnvAdminUser() {
 
     const fullName = process.env.INIT_ADMIN_NAME || 'Admin User';
 
-    const existing = await User.findOne({ email }).lean();
-    if (!existing) {
+    let user = await User.findOne({ email });
+    if (!user) {
       const hashed = await bcrypt.hash(password, 10);
       await User.create({
         fullName,
@@ -75,6 +75,37 @@ async function ensureEnvAdminUser() {
         status: 'active',
       });
       console.log(`✅ Seeded admin user from env: ${email}`);
+      return;
+    }
+
+    let updated = false;
+    // Ensure role is admin
+    if ((user.role || '').toLowerCase() !== 'admin') {
+      user.role = 'admin';
+      updated = true;
+    }
+    // Ensure name matches
+    if (fullName && user.fullName !== fullName) {
+      user.fullName = fullName;
+      updated = true;
+    }
+    // Ensure password matches env; if not, update it
+    try {
+      const matches = await bcrypt.compare(password, user.password || '');
+      if (!matches) {
+        user.password = await bcrypt.hash(password, 10);
+        updated = true;
+      }
+    } catch (_) {
+      user.password = await bcrypt.hash(password, 10);
+      updated = true;
+    }
+
+    if (updated) {
+      await user.save();
+      console.log(`🔁 Updated env admin user: ${email}`);
+    } else {
+      console.log(`ℹ️ Env admin user already up to date: ${email}`);
     }
   } catch (e) {
     console.error('Env admin seed error:', e.message || e);

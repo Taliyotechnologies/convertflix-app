@@ -168,8 +168,6 @@ const Navbar: React.FC = () => {
                 <Link to="/about">About Us</Link>
                 <Link to="/contact">Contact</Link>
                 <Link to="/owner">Owner</Link>
-                <Link to="/terms">Terms</Link>
-                <Link to="/privacy">Privacy Policy</Link>
 					</div>
             )}
           </div>
@@ -251,8 +249,6 @@ const Navbar: React.FC = () => {
               <Link to="/about">About Us</Link>
               <Link to="/contact">Contact</Link>
               <Link to="/owner">Owner</Link>
-              <Link to="/terms">Terms</Link>
-              <Link to="/privacy">Privacy Policy</Link>
             </div>
           </div>
 

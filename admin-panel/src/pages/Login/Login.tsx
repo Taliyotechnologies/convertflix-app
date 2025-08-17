@@ -95,7 +95,7 @@ const Login: React.FC = () => {
 
         <div className={styles.demo}>
           <h4 className={styles.demoTitle}>Demo Credentials</h4>
-          <p className={styles.demoText}>Email: admin@convertflix.com</p>
+          <p className={styles.demoText}>Email: harshbudhauliya882@gmail.com</p>
           <p className={styles.demoText}>Password: admin123</p>
         </div>
       </div>
