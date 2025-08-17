@@ -32,6 +32,7 @@ const AppContent: React.FC = () => {
             <Route path="/users" element={<Users />} />
             <Route path="/files" element={<Files />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
       </div>
