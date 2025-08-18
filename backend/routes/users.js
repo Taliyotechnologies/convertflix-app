@@ -10,17 +10,35 @@ const useMongo = () => {
   try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
 };
 
+// Normalize role to consistent values
+function normalizeRole(r) {
+  try {
+    const base = String(r || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+|_/g, '-');
+    const collapsed = base.replace(/-/g, '');
+    if (base === 'admin' || collapsed === 'admin') return 'admin';
+    if (base === 'sub-admin' || collapsed === 'subadmin') return 'sub-admin';
+    return 'user';
+  } catch (_) {
+    return 'user';
+  }
+}
+
 async function requireAdmin(req, res, next) {
   try {
     if (useMongo()) {
       const doc = await User.findById(req.user?.userId).lean();
-      if (!doc || !['admin', 'sub-admin'].includes(doc.role || 'user')) {
+      const roleNorm = normalizeRole(doc && doc.role);
+      if (!doc || !['admin', 'sub-admin'].includes(roleNorm)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
     } else {
       const list = await getUsers();
       const me = (list || []).find(u => u.id === req.user?.userId);
-      if (!me || !['admin', 'sub-admin'].includes(me.role || 'user')) {
+      const roleNorm = normalizeRole(me && me.role);
+      if (!me || !['admin', 'sub-admin'].includes(roleNorm)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
     }
@@ -38,21 +56,11 @@ router.post('/', auth, requireAdmin, async (req, res) => {
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'name, email, and password are required' });
     }
-    // Normalize role to accept variants like "Sub Admin", "subadmin", "sub_admin"
-    const normalizeRole = (r) => {
-      try {
-        const s = String(r || '')
-          .trim()
-          .toLowerCase()
-          .replace(/\s+|_/g, '-');
-        if (s === 'admin') return 'admin';
-        if (s === 'sub-admin') return 'sub-admin';
-        return 'user';
-      } catch (_) {
-        return 'user';
-      }
-    };
+    // Normalize role to accept variants like "Sub Admin", "subadmin", "sub_admin", "Sub-Admin"
     const finalRole = normalizeRole(role);
+    if (process.env.NODE_ENV !== 'production') {
+      try { console.log('[users:create] incoming role=', role, 'finalRole=', finalRole, 'mongo=', useMongo()); } catch (_) {}
+    }
     const hashed = await bcrypt.hash(password, 10);
     if (useMongo()) {
       const existing = await User.findOne({ email: (email || '').toLowerCase() }).lean();

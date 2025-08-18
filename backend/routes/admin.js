@@ -13,18 +13,36 @@ const useMongo = () => {
   try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
 };
 
+// Normalize role to consistent values
+function normalizeRole(r) {
+  try {
+    const base = String(r || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+|_/g, '-');
+    const collapsed = base.replace(/-/g, '');
+    if (base === 'admin' || collapsed === 'admin') return 'admin';
+    if (base === 'sub-admin' || collapsed === 'subadmin') return 'sub-admin';
+    return 'user';
+  } catch (_) {
+    return 'user';
+  }
+}
+
 // Only allow 'admin' and 'sub-admin' to access admin routes
 async function requireAdmin(req, res, next) {
   try {
     if (useMongo()) {
       const me = await User.findById(req.user?.userId).lean();
-      if (!me || !['admin', 'sub-admin'].includes(me.role || 'user')) {
+      const roleNorm = normalizeRole(me && me.role);
+      if (!me || !['admin', 'sub-admin'].includes(roleNorm)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
     } else {
       const list = await getUsers();
       const me = (list || []).find(u => u.id === req.user?.userId);
-      if (!me || !['admin', 'sub-admin'].includes(me.role || 'user')) {
+      const roleNorm = normalizeRole(me && me.role);
+      if (!me || !['admin', 'sub-admin'].includes(roleNorm)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
     }
@@ -91,7 +109,7 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
           id: u._id.toString(),
           email: u.email,
           name: u.fullName || '',
-          role: u.role || 'user',
+          role: normalizeRole(u.role),
           createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
           lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
           status: u.status || 'active',
@@ -107,7 +125,7 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
             id: u.id,
             email: u.email,
             name: u.name || u.fullName || '',
-            role: u.role || 'user',
+            role: normalizeRole(u.role),
             createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
             lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
             status: u.status || 'active',
@@ -138,7 +156,7 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
             id: u._id.toString(),
             email: u.email,
             name: u.fullName || '',
-            role: u.role || 'user',
+            role: normalizeRole(u.role),
             createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
             lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
             status: u.status || 'active',
@@ -154,7 +172,7 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
               id: u.id,
               email: u.email,
               name: u.name || u.fullName || '',
-              role: u.role || 'user',
+              role: normalizeRole(u.role),
               createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
               lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
               status: u.status || 'active',
@@ -197,7 +215,7 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
           id: u._id.toString(),
           email: u.email,
           name: u.fullName || '',
-          role: u.role || 'user',
+          role: normalizeRole(u.role),
           createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
           lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
           status: u.status || 'active',
@@ -213,7 +231,7 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
             id: u.id,
             email: u.email,
             name: u.name || u.fullName || '',
-            role: u.role || 'user',
+            role: normalizeRole(u.role),
             createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
             lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
             status: u.status || 'active',
@@ -298,7 +316,7 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
         id: u._id.toString(),
         email: u.email,
         name: u.fullName || '',
-        role: u.role || 'user',
+        role: normalizeRole(u.role),
         createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
         lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
         status: u.status || 'active',
@@ -311,7 +329,7 @@ router.get('/users', auth, requireAdmin, async (req, res) => {
         id: u.id,
         email: u.email,
         name: u.name || u.fullName || '',
-        role: u.role || 'user',
+        role: normalizeRole(u.role),
         createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
         lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
         status: u.status || 'active',

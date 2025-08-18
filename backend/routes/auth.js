@@ -13,6 +13,22 @@ const useMongo = () => {
   try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
 };
 
+// Normalize role to consistent values
+function normalizeRole(r) {
+  try {
+    const base = String(r || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+|_/g, '-');
+    const collapsed = base.replace(/-/g, '');
+    if (base === 'admin' || collapsed === 'admin') return 'admin';
+    if (base === 'sub-admin' || collapsed === 'subadmin') return 'sub-admin';
+    return 'user';
+  } catch (_) {
+    return 'user';
+  }
+}
+
 // In-memory storage for reset tokens (in production, use database or cache)
 const resetTokens = new Map();
 
@@ -58,14 +74,14 @@ router.post('/signup', async (req, res) => {
         fullName,
         email: (email || '').toLowerCase(),
         password: hashedPassword,
-        role: role || 'user',
+        role: normalizeRole(role),
         status: 'active',
         lastLogin: new Date(),
       });
       createdUserId = doc._id.toString();
       createdUserEmail = doc.email;
       createdUserFullName = doc.fullName;
-      createdUserRole = doc.role;
+      createdUserRole = normalizeRole(doc.role);
     } else {
       // JSON fallback
       const list = await getUsers();
@@ -81,14 +97,14 @@ router.post('/signup', async (req, res) => {
         password: hashedPassword,
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
-        role: role || 'user',
+        role: normalizeRole(role),
         status: 'active'
       };
       await saveUsers([...(list || []), user]);
       createdUserId = user.id;
       createdUserEmail = user.email;
       createdUserFullName = user.fullName;
-      createdUserRole = user.role;
+      createdUserRole = normalizeRole(user.role);
     }
 
     // Generate JWT token
@@ -110,7 +126,7 @@ router.post('/signup', async (req, res) => {
         id: createdUserId,
         fullName: createdUserFullName,
         email: createdUserEmail,
-        role: createdUserRole
+        role: normalizeRole(createdUserRole)
       }
     });
   } catch (error) {
@@ -182,7 +198,7 @@ router.post('/login', async (req, res) => {
         id: userId,
         fullName: dbUser.fullName || dbUser.name || '',
         email: dbUser.email,
-        role: dbUser.role || 'user'
+        role: normalizeRole(dbUser.role)
       }
     });
   } catch (error) {
@@ -205,7 +221,7 @@ router.get('/me', auth, async (req, res) => {
           id: doc._id.toString(),
           email: doc.email,
           fullName: doc.fullName || '',
-          role: doc.role || 'user'
+          role: normalizeRole(doc.role)
         }
       });
     } else {
@@ -218,7 +234,7 @@ router.get('/me', auth, async (req, res) => {
           id: user.id,
           email: user.email,
           fullName: user.fullName || user.name || '',
-          role: user.role
+          role: normalizeRole(user.role)
         }
       });
     }
@@ -380,7 +396,7 @@ router.post('/google', async (req, res) => {
           id: doc._id.toString(),
           fullName: doc.fullName,
           email: doc.email,
-          role: doc.role,
+          role: normalizeRole(doc.role),
           avatar: doc.avatar
         }
       });
@@ -430,7 +446,7 @@ router.post('/google', async (req, res) => {
           id: user.id,
           fullName: user.fullName,
           email: user.email,
-          role: user.role,
+          role: normalizeRole(user.role),
           avatar: user.avatar
         }
       });
