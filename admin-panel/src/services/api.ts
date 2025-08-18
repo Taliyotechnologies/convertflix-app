@@ -92,7 +92,6 @@ export async function deleteUser(id: string): Promise<boolean> {
   return requestOk(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-export async function resetUserPassword(id: string): Promise<boolean> {
-  // Assuming backend triggers a reset flow or rotates password
-  return requestOk(`/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST' });
+export async function resetUserPassword(id: string): Promise<{ success: boolean; tempPassword?: string }> {
+  return request<{ success: boolean; tempPassword?: string }>(`/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST' });
 }

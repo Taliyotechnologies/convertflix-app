@@ -10,8 +10,11 @@ const Users: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPassModal, setShowPassModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [newUser, setNewUser] = useState({ email: '', password: '', name: '' });
+  const [passUser, setPassUser] = useState<User | null>(null);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [newUser, setNewUser] = useState<{ email: string; password: string; name: string; role: 'admin' | 'user' }>({ email: '', password: '', name: '', role: 'user' });
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -40,10 +43,15 @@ const Users: React.FC = () => {
   const handleAddUser = () => {
     (async () => {
       try {
-        const created = await createUser(newUser);
+        const created = await createUser({
+          email: newUser.email,
+          password: newUser.password,
+          name: newUser.name,
+          role: newUser.role,
+        });
         setUsers(prev => [created, ...prev]);
         setShowAddModal(false);
-        setNewUser({ email: '', password: '', name: '' });
+        setNewUser({ email: '', password: '', name: '', role: 'user' });
       } catch (e) {
         console.error('Create user failed', e);
       }
@@ -68,8 +76,10 @@ const Users: React.FC = () => {
   const handleResetPassword = (user: User) => {
     (async () => {
       try {
-        await resetUserPassword(user.id);
-        console.log('Password reset triggered for:', user.email);
+        const res = await resetUserPassword(user.id);
+        setPassUser(user);
+        setTempPassword(res?.tempPassword || '');
+        setShowPassModal(true);
       } catch (e) {
         console.error('Reset password failed', e);
       }
@@ -236,6 +246,17 @@ const Users: React.FC = () => {
                   required
                 />
               </div>
+              <div className={styles.formGroup}>
+                <label>Role</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: (e.target.value as 'admin' | 'user') })}
+                  required
+                >
+                  <option value="user">Sub Admin</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
               <div className={styles.modalActions}>
                 <button type="button" onClick={() => setShowAddModal(false)}>
                   Cancel
@@ -267,6 +288,26 @@ const Users: React.FC = () => {
               >
                 Delete User
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Temporary Password Modal */}
+      {showPassModal && passUser && (
+        <div className={styles.modalOverlay} onClick={() => setShowPassModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>Temporary Password</h3>
+            <p className={styles.modalText}>
+              Share this one-time password with <strong>{passUser.email}</strong>. Ask them to change it after first login.
+            </p>
+            <div className={styles.formGroup}>
+              <label>Password</label>
+              <input type="text" value={tempPassword || ''} readOnly />
+            </div>
+            <div className={styles.modalActions}>
+              <button onClick={() => { try { navigator.clipboard.writeText(tempPassword || ''); } catch(e) {} }}>Copy</button>
+              <button className={styles.primaryButton} onClick={() => { setShowPassModal(false); setPassUser(null); setTempPassword(null); }}>Done</button>
             </div>
           </div>
         </div>

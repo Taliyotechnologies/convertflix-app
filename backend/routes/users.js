@@ -124,7 +124,8 @@ router.post('/:id/reset-password', auth, requireAdmin, async (req, res) => {
       if (!doc) return res.status(404).json({ error: 'User not found' });
       doc.password = hashed;
       await doc.save();
-      res.json({ success: true });
+      // Return one-time temporary password so admin can deliver it to the user
+      res.json({ success: true, tempPassword: temp });
     } else {
       const list = await getUsers();
       const idx = (list || []).findIndex(u => u.id === id);
@@ -133,7 +134,8 @@ router.post('/:id/reset-password', auth, requireAdmin, async (req, res) => {
       const next = [...list];
       next[idx] = updated;
       await saveUsers(next);
-      res.json({ success: true });
+      // Return one-time temporary password so admin can deliver it to the user
+      res.json({ success: true, tempPassword: temp });
     }
   } catch (error) {
     console.error('Reset password error:', error);
