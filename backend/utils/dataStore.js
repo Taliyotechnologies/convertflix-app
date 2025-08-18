@@ -92,6 +92,12 @@ async function addActivity(activity) {
   return extended;
 }
 
+// Save activities (used by retention pruning)
+async function saveActivities(list) {
+  await writeJSON('activities', Array.isArray(list) ? list : []);
+  return Array.isArray(list) ? list : [];
+}
+
 // Metrics (persistent dashboard counters)
 const defaultMetrics = {
   lifetimeFiles: 0,         // total files processed historically
@@ -142,10 +148,12 @@ async function recordFileProcessed({ size = 0, kind = 'processed', when = new Da
 
   // Optional: prune very old days to keep file small (keep last 90 days)
   try {
-    const keys = Object.keys(m.byDay).sort();
-    const excess = Math.max(0, keys.length - 90);
-    for (let i = 0; i < excess; i++) {
-      delete m.byDay[keys[i]];
+    // Keep only the last 14 days of daily metrics
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    for (const k of Object.keys(m.byDay)) {
+      const d = new Date(k);
+      if (d < cutoff) delete m.byDay[k];
     }
   } catch (_) {}
 
@@ -156,6 +164,45 @@ async function recordFileProcessed({ size = 0, kind = 'processed', when = new Da
   return m;
 }
 
+// Prune helpers for retention policy
+async function pruneActivities(days = 14) {
+  try {
+    const now = Date.now();
+    const cutoff = now - days * 24 * 60 * 60 * 1000;
+    const list = await getActivities();
+    const filtered = (list || []).filter(a => {
+      const ts = a && a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      return ts >= cutoff;
+    });
+    if (filtered.length !== (list || []).length) {
+      await saveActivities(filtered);
+    }
+    return { before: (list || []).length, after: filtered.length };
+  } catch (e) {
+    return { before: 0, after: 0 };
+  }
+}
+
+async function pruneMetricsByDay(days = 14) {
+  try {
+    const m = await getMetrics();
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    let changed = false;
+    for (const k of Object.keys(m.byDay || {})) {
+      const d = new Date(k);
+      if (d < cutoff) {
+        delete m.byDay[k];
+        changed = true;
+      }
+    }
+    if (changed) await saveMetrics(m);
+    return { changed };
+  } catch (e) {
+    return { changed: false };
+  }
+}
+
 module.exports = {
   getUsers,
   saveUsers,
@@ -163,10 +210,13 @@ module.exports = {
   saveSettings,
   getActivities,
   addActivity,
+  saveActivities,
   defaultSettings,
   // metrics
   getMetrics,
   saveMetrics,
   recordFileProcessed,
-  defaultMetrics
+  defaultMetrics,
+  pruneActivities,
+  pruneMetricsByDay
 };

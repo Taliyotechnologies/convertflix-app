@@ -1,11 +1,21 @@
 const fs = require('fs');
 const path = require('path');
 const realtime = require('./realtime');
+const { pruneActivities, pruneMetricsByDay } = require('./dataStore');
 
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 
 function msFromDays(days) {
   return days * 24 * 60 * 60 * 1000;
+}
+
+async function cleanupOldData(days = 14) {
+  try {
+    await pruneActivities(days);
+  } catch (_) {}
+  try {
+    await pruneMetricsByDay(days);
+  } catch (_) {}
 }
 
 async function cleanupOldUploads(days = 1) {
@@ -42,4 +52,4 @@ async function cleanupOldUploads(days = 1) {
   return { count: deleted.length, deleted };
 }
 
-module.exports = { cleanupOldUploads };
+module.exports = { cleanupOldUploads, cleanupOldData };

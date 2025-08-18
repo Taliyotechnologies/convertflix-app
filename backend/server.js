@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { connectDB } = require('./config/db');
-const { cleanupOldUploads } = require('./utils/retention');
+const { cleanupOldUploads, cleanupOldData } = require('./utils/retention');
 const { getSettings } = require('./utils/dataStore');
 
 const app = express();
@@ -75,6 +75,8 @@ app.listen(PORT, () => {
       if (count > 0) {
         console.log(`🧹 Retention cleanup removed ${count} old file(s) (> ${days} day(s))`);
       }
+      // Prune dashboard data (activities + metrics byDay) to last 14 days
+      await cleanupOldData(14);
     } catch (e) {
       console.error('Retention cleanup run error:', e && e.message ? e.message : e);
     }
