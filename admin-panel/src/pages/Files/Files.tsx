@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Calendar, User, Download, Trash2, Eye, ArrowRight } from 'lucide-react';
+import { Search, Calendar, User, Download, Trash2, Eye, ArrowRight, X } from 'lucide-react';
 import { getFiles, deleteFile } from '../../services/api';
 import { subscribeSSE, isSSEEnabled } from '../../services/realtime';
 import type { FileRecord } from '../../types';
@@ -14,6 +14,15 @@ const Files: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
   const [files, setFiles] = useState<FileRecord[]>([]);
+
+  // Preview state
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
+
+  // Build file URL from backend base (strip trailing /api if present)
+  const apiBase = (((import.meta as any).env?.VITE_API_BASE_URL) || 'http://localhost:5000/api').replace(/\/$/, '');
+  const backendBase = apiBase.replace(/\/?api$/, '');
+  const buildFileUrl = (name: string) => `${backendBase}/uploads/${encodeURIComponent(name)}`;
 
   // Load initial files
   useEffect(() => {
@@ -82,14 +91,28 @@ const Files: React.FC = () => {
     })();
   };
 
-  const handleDownloadFile = (file: any) => {
-    // Mock action - in real app, this would trigger a download
-    console.log('Downloading file:', file.name);
+  const handleDownloadFile = async (file: FileRecord) => {
+    try {
+      const url = buildFileUrl(file.name);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Download failed');
+      const blob = await res.blob();
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = dlUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(dlUrl);
+    } catch (e) {
+      console.error('Download failed', e);
+    }
   };
 
-  const handleViewFile = (file: any) => {
-    // Mock action - in real app, this would open a preview
-    console.log('Viewing file:', file.name);
+  const handleViewFile = (file: FileRecord) => {
+    setPreviewFile(file);
+    setShowPreviewModal(true);
   };
 
   return (
@@ -234,6 +257,43 @@ const Files: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Preview Modal */}
+      {showPreviewModal && previewFile && (
+        <div className={styles.modalOverlay} onClick={() => setShowPreviewModal(false)}>
+          <div className={`${styles.modal} ${styles.previewModal}`} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.previewHeader}>
+              <h3 className={styles.modalTitle}>{previewFile.name}</h3>
+              <button className={styles.actionButton} onClick={() => setShowPreviewModal(false)} title="Close">
+                <X size={16} />
+              </button>
+            </div>
+            <div className={styles.previewBody}>
+              {previewFile.type === 'image' && (
+                <img src={buildFileUrl(previewFile.name)} alt={previewFile.name} className={styles.previewMedia} />
+              )}
+              {previewFile.type === 'video' && (
+                <video src={buildFileUrl(previewFile.name)} className={styles.previewMedia} controls />
+              )}
+              {previewFile.type === 'audio' && (
+                <audio src={buildFileUrl(previewFile.name)} className={styles.previewAudio} controls />
+              )}
+              {previewFile.type === 'pdf' && (
+                <iframe src={buildFileUrl(previewFile.name)} className={styles.previewFrame} title="PDF Preview" />
+              )}
+              {previewFile.type === 'document' && (
+                <div className={styles.previewFallback}>
+                  <p>Preview not available for this file type.</p>
+                </div>
+              )}
+            </div>
+            <div className={styles.modalActions}>
+              <button onClick={() => handleDownloadFile(previewFile)}>Download</button>
+              <a href={buildFileUrl(previewFile.name)} target="_blank" rel="noreferrer">Open in new tab</a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedFile && (
