@@ -175,6 +175,11 @@
   color: var(--accent-primary);
 }
 
+.role.sub-admin {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--accent-warning);
+}
+
 .role.user {
   background-color: rgba(16, 185, 129, 0.1);
   color: var(--accent-success);

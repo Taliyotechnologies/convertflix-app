@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           id: data.user.id || '1',
           email: data.user.email,
           name: data.user.fullName || 'Admin User',
-          role: data.user.role || 'admin',
+          role: data.user.role || 'user',
           createdAt: data.user.createdAt || '2024-01-01T00:00:00Z',
           lastLogin: new Date().toISOString(),
           status: 'active',

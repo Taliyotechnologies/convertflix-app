@@ -12,11 +12,27 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import styles from './App.module.css';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   // If not authenticated, show login page
   if (!isAuthenticated) {
     return <Login />;
+  }
+
+  const allowed = user && (user.role === 'admin' || user.role === 'sub-admin');
+  if (!allowed) {
+    return (
+      <div className={styles.app}>
+        <div className={styles.mainContent}>
+          <main className={styles.content}>
+            <div style={{ padding: '2rem' }}>
+              <h2>Access denied</h2>
+              <p>You do not have permission to access the admin panel.</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (

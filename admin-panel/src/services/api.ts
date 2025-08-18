@@ -80,7 +80,7 @@ export async function deleteFile(id: string): Promise<boolean> {
   return requestOk(`/admin/files/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-export async function createUser(payload: { email: string; password: string; name: string; role?: 'admin' | 'user' }): Promise<User> {
+export async function createUser(payload: { email: string; password: string; name: string; role?: 'admin' | 'sub-admin' | 'user' }): Promise<User> {
   return request<User>('/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

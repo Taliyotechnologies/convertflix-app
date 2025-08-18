@@ -14,13 +14,13 @@ async function requireAdmin(req, res, next) {
   try {
     if (useMongo()) {
       const doc = await User.findById(req.user?.userId).lean();
-      if (!doc || (doc.role || 'user') !== 'admin') {
+      if (!doc || !['admin', 'sub-admin'].includes(doc.role || 'user')) {
         return res.status(403).json({ error: 'Admin access required' });
       }
     } else {
       const list = await getUsers();
       const me = (list || []).find(u => u.id === req.user?.userId);
-      if (!me || (me.role || 'user') !== 'admin') {
+      if (!me || !['admin', 'sub-admin'].includes(me.role || 'user')) {
         return res.status(403).json({ error: 'Admin access required' });
       }
     }
@@ -38,6 +38,21 @@ router.post('/', auth, requireAdmin, async (req, res) => {
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'name, email, and password are required' });
     }
+    // Normalize role to accept variants like "Sub Admin", "subadmin", "sub_admin"
+    const normalizeRole = (r) => {
+      try {
+        const s = String(r || '')
+          .trim()
+          .toLowerCase()
+          .replace(/\s+|_/g, '-');
+        if (s === 'admin') return 'admin';
+        if (s === 'sub-admin') return 'sub-admin';
+        return 'user';
+      } catch (_) {
+        return 'user';
+      }
+    };
+    const finalRole = normalizeRole(role);
     const hashed = await bcrypt.hash(password, 10);
     if (useMongo()) {
       const existing = await User.findOne({ email: (email || '').toLowerCase() }).lean();
@@ -46,7 +61,7 @@ router.post('/', auth, requireAdmin, async (req, res) => {
         fullName: name,
         email: (email || '').toLowerCase(),
         password: hashed,
-        role: role === 'admin' ? 'admin' : 'user',
+        role: finalRole,
         status: 'active',
       });
       const safe = {
@@ -72,7 +87,7 @@ router.post('/', auth, requireAdmin, async (req, res) => {
         fullName: name,
         email,
         password: hashed,
-        role: role === 'admin' ? 'admin' : 'user',
+        role: finalRole,
         status: 'active',
         createdAt: new Date().toISOString(),
         lastLogin: null,

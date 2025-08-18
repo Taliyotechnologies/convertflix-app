@@ -14,7 +14,7 @@ const Users: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [passUser, setPassUser] = useState<User | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [newUser, setNewUser] = useState<{ email: string; password: string; name: string; role: 'admin' | 'user' }>({ email: '', password: '', name: '', role: 'user' });
+  const [newUser, setNewUser] = useState<{ email: string; password: string; name: string; role: 'admin' | 'sub-admin' | 'user' }>({ email: '', password: '', name: '', role: 'sub-admin' });
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -51,7 +51,7 @@ const Users: React.FC = () => {
         });
         setUsers(prev => [created, ...prev]);
         setShowAddModal(false);
-        setNewUser({ email: '', password: '', name: '', role: 'user' });
+        setNewUser({ email: '', password: '', name: '', role: 'sub-admin' });
       } catch (e) {
         console.error('Create user failed', e);
       }
@@ -78,7 +78,10 @@ const Users: React.FC = () => {
       try {
         const res = await resetUserPassword(user.id);
         setPassUser(user);
-        setTempPassword(res?.tempPassword || '');
+        // Tolerate different server keys just in case (tempPassword | temp | password)
+        // and ensure we always set a string to render in the input
+        const pw = (res && ((res as any).tempPassword ?? (res as any).temp ?? (res as any).password)) || '';
+        setTempPassword(String(pw));
         setShowPassModal(true);
       } catch (e) {
         console.error('Reset password failed', e);
@@ -250,10 +253,10 @@ const Users: React.FC = () => {
                 <label>Role</label>
                 <select
                   value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: (e.target.value as 'admin' | 'user') })}
+                  onChange={(e) => setNewUser({ ...newUser, role: (e.target.value as 'admin' | 'sub-admin' | 'user') })}
                   required
                 >
-                  <option value="user">Sub Admin</option>
+                  <option value="sub-admin">Sub Admin</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>

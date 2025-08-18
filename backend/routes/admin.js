@@ -13,10 +13,32 @@ const useMongo = () => {
   try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
 };
 
+// Only allow 'admin' and 'sub-admin' to access admin routes
+async function requireAdmin(req, res, next) {
+  try {
+    if (useMongo()) {
+      const me = await User.findById(req.user?.userId).lean();
+      if (!me || !['admin', 'sub-admin'].includes(me.role || 'user')) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+    } else {
+      const list = await getUsers();
+      const me = (list || []).find(u => u.id === req.user?.userId);
+      if (!me || !['admin', 'sub-admin'].includes(me.role || 'user')) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+    }
+    next();
+  } catch (e) {
+    console.error('Admin check error (admin.js):', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
 // @route   GET /api/admin/stats
 // @desc    Get dashboard statistics
 // @access  Private (Admin)
-router.get('/stats', auth, async (req, res) => {
+router.get('/stats', auth, requireAdmin, async (req, res) => {
   try {
     const stats = await computeStats();
     res.json(stats);
@@ -29,7 +51,7 @@ router.get('/stats', auth, async (req, res) => {
 // @route   GET /api/admin/stream
 // @desc    SSE stream for realtime admin updates
 // @access  Private (Admin)
-router.get('/stream', auth, async (req, res) => {
+router.get('/stream', auth, requireAdmin, async (req, res) => {
   // SSE headers
   res.set({
     'Content-Type': 'text/event-stream',
@@ -217,7 +239,7 @@ router.get('/stream', auth, async (req, res) => {
 // @route   GET /api/admin/files
 // @desc    Get all files with details
 // @access  Private (Admin)
-router.get('/files', auth, async (req, res) => {
+router.get('/files', auth, requireAdmin, async (req, res) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
     const files = listFiles(limit);
@@ -231,7 +253,7 @@ router.get('/files', auth, async (req, res) => {
 // @route   GET /api/admin/activity
 // @desc    Get activity logs
 // @access  Private (Admin)
-router.get('/activity', auth, async (req, res) => {
+router.get('/activity', auth, requireAdmin, async (req, res) => {
   try {
     const { limit = 20, since, severity } = req.query;
     let activities = await getActivities();
@@ -259,7 +281,7 @@ router.get('/activity', auth, async (req, res) => {
 // @route   GET /api/admin/users
 // @desc    Get all users
 // @access  Private (Admin)
-router.get('/users', auth, async (req, res) => {
+router.get('/users', auth, requireAdmin, async (req, res) => {
   try {
     const { status, q, limit = 50 } = req.query;
 
@@ -320,7 +342,7 @@ router.get('/users', auth, async (req, res) => {
 // @route   GET /api/admin/settings
 // @desc    Get admin settings
 // @access  Private (Admin)
-router.get('/settings', auth, async (req, res) => {
+router.get('/settings', auth, requireAdmin, async (req, res) => {
   try {
     const settings = await getSettings();
     res.json(settings);
@@ -333,7 +355,7 @@ router.get('/settings', auth, async (req, res) => {
 // @route   PUT /api/admin/settings
 // @desc    Update admin settings
 // @access  Private (Admin)
-router.put('/settings', auth, async (req, res) => {
+router.put('/settings', auth, requireAdmin, async (req, res) => {
   try {
     const { siteName, maxFileSize, allowedFormats, maintenanceMode, emailNotifications, autoDeleteDays } = req.body || {};
     const updated = await saveSettings({ siteName, maxFileSize, allowedFormats, maintenanceMode, emailNotifications, autoDeleteDays });
@@ -347,7 +369,7 @@ router.put('/settings', auth, async (req, res) => {
 // @route   DELETE /api/admin/files/:id
 // @desc    Delete a file
 // @access  Private (Admin)
-router.delete('/files/:id', auth, async (req, res) => {
+router.delete('/files/:id', auth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const idx = parseInt(id) - 1;
