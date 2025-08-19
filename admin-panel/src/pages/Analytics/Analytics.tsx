@@ -34,8 +34,8 @@ import {
 } from 'recharts';
 
 type RangeKey = '24h' | '7d' | '30d' | 'all';
-type SeverityKey = 'all' | 'info' | 'error';
-type StatusKey = 'all' | 'completed' | 'failed' | 'processing';
+type SeverityKey = 'all' | 'info' | 'warning' | 'error';
+type StatusKey = 'all' | 'completed' | 'processing';
 type TypeKey = 'all' | 'image' | 'video' | 'audio' | 'pdf' | 'document';
 
 const Analytics: React.FC = () => {
@@ -77,16 +77,7 @@ const Analytics: React.FC = () => {
   }, {}), [files]);
   const fileTypeEntries = Object.entries(fileTypeCounts);
 
-  // Derived: success vs failed vs processing
-  const statusCounts = useMemo(() => {
-    const res = { completed: 0, failed: 0, processing: 0 };
-    for (const f of files) {
-      if (f.status === 'completed') res.completed++;
-      else if (f.status === 'failed') res.failed++;
-      else if (f.status === 'processing') res.processing++;
-    }
-    return res;
-  }, [files]);
+  // removed: statusCounts (Conversion Outcomes section removed)
 
   // Visitor analytics derived entries
   const deviceTypeVisitsEntries = useMemo(() => Object.entries(stats.deviceTypeVisits || {}), [stats]);
@@ -95,32 +86,9 @@ const Analytics: React.FC = () => {
   const countryDevicesEntries = useMemo(() => Object.entries(stats.countryDevices || {}).sort((a,b)=>b[1]-a[1]).slice(0,10), [stats]);
   const newDeviceLogs = useMemo(() => logs.filter(l => l.type === 'new_device').slice(0, 8), [logs]);
 
-  // Derived: averages
-  const averages = useMemo(() => {
-    const withRatio = files.filter(f => typeof f.compressionRatio === 'number');
-    const avgCompression = withRatio.length
-      ? (withRatio.reduce((s, f) => s + (f.compressionRatio as number), 0) / withRatio.length)
-      : 0;
+  // removed: averages (Key Averages section removed)
 
-    const withTimes = files.filter(f => f.uploadedAt && f.convertedAt);
-    const avgConvMs = withTimes.length
-      ? (withTimes.reduce((s, f) => s + (new Date(f.convertedAt as string).getTime() - new Date(f.uploadedAt as string).getTime()), 0) / withTimes.length)
-      : 0;
-
-    const avgConvMins = avgConvMs / 60000;
-
-    return { avgCompression, avgConvMins };
-  }, [files]);
-
-  // Top uploaders
-  const topUploaders = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const f of files) {
-      const key = f.uploadedBy || 'Unknown';
-      map.set(key, (map.get(key) || 0) + 1);
-    }
-    return Array.from(map.entries()).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  }, [files]);
+  // removed: topUploaders (Top Uploaders section removed)
 
   // Recent conversions table (filterable)
   const filteredConversions = useMemo(() => {
@@ -381,6 +349,7 @@ const Analytics: React.FC = () => {
           <select value={severity} onChange={(e) => setSeverity(e.target.value as SeverityKey)} className={styles.select}>
             <option value="all">All</option>
             <option value="info">Info</option>
+            <option value="warning">Warning</option>
             <option value="error">Error</option>
           </select>
         </div>
@@ -389,7 +358,6 @@ const Analytics: React.FC = () => {
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusKey)} className={styles.select}>
             <option value="all">All</option>
             <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
             <option value="processing">Processing</option>
           </select>
         </div>
@@ -501,30 +469,7 @@ const Analytics: React.FC = () => {
             )}
           </div>
         </div>
-        {/* Success vs Failed */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <TrendingUp size={22} className={styles.cardIcon} />
-            <h3 className={styles.cardTitle}>Conversion Outcomes</h3>
-          </div>
-          <div className={styles.outcomes}> 
-            <div className={styles.outcomeItem}>
-              <span className={styles.outcomeLabel}>Completed</span>
-              <span className={styles.outcomeValue}>{statusCounts.completed}</span>
-              <div className={styles.outcomeBarWrap}><div className={styles.outcomeBarSuccess} style={{ width: `${Math.max(6, Math.round((statusCounts.completed / Math.max(1, files.length)) * 100))}%` }} /></div>
-            </div>
-            <div className={styles.outcomeItem}>
-              <span className={styles.outcomeLabel}>Failed</span>
-              <span className={styles.outcomeValue}>{statusCounts.failed}</span>
-              <div className={styles.outcomeBarWrap}><div className={styles.outcomeBarError} style={{ width: `${Math.max(6, Math.round((statusCounts.failed / Math.max(1, files.length)) * 100))}%` }} /></div>
-            </div>
-            <div className={styles.outcomeItem}>
-              <span className={styles.outcomeLabel}>Processing</span>
-              <span className={styles.outcomeValue}>{statusCounts.processing}</span>
-              <div className={styles.outcomeBarWrap}><div className={styles.outcomeBarWarn} style={{ width: `${Math.max(6, Math.round((statusCounts.processing / Math.max(1, files.length)) * 100))}%` }} /></div>
-            </div>
-          </div>
-        </div>
+        {/* Conversion Outcomes removed (no failed status tracked) */}
         {/* File Type Distribution (Pie) */}
         <div className={styles.card}>
           <div className={styles.cardHeader}>
@@ -561,6 +506,8 @@ const Analytics: React.FC = () => {
                 <div className={styles.activityLeft}>
                   {log.severity === 'error' ? (
                     <AlertTriangle size={16} className={styles.activityError} />
+                  ) : log.severity === 'warning' ? (
+                    <AlertTriangle size={16} className={styles.activityWarn} />
                   ) : (
                     <CheckCircle size={16} className={styles.activityOk} />
                   )}
@@ -576,42 +523,7 @@ const Analytics: React.FC = () => {
         </div>
       </div>
 
-      {/* Secondary Row */}
-      <div className={styles.secondaryRow}>
-        {/* Key Averages */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <BarChart3 size={22} className={styles.cardIcon} />
-            <h3 className={styles.cardTitle}>Key Averages</h3>
-          </div>
-          <div className={styles.avgGrid}>
-            <div className={styles.avgItem}>
-              <span className={styles.avgLabel}>Avg Compression</span>
-              <span className={styles.avgValue}>{formatPercentage(averages.avgCompression)}</span>
-            </div>
-            <div className={styles.avgItem}>
-              <span className={styles.avgLabel}>Avg Conversion Time</span>
-              <span className={styles.avgValue}>{averages.avgConvMins.toFixed(1)} min</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Uploaders */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <UsersIcon size={22} className={styles.cardIcon} />
-            <h3 className={styles.cardTitle}>Top Uploaders</h3>
-          </div>
-          <div className={styles.uploaderList}>
-            {topUploaders.map(([email, count]) => (
-              <div key={email} className={styles.uploaderItem}>
-                <span className={styles.uploaderEmail}>{email}</span>
-                <span className={styles.uploaderCount}>{count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Secondary Row removed (Key Averages, Top Uploaders) */}
 
       {/* Conversions Table */}
       <div className={styles.card}>
