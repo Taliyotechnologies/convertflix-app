@@ -29,6 +29,8 @@ const Dashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
+    // If SSE is enabled, the initial snapshots will come via the stream; skip duplicate fetches
+    if (isSSEEnabled()) return;
     let alive = true;
     (async () => {
       try {

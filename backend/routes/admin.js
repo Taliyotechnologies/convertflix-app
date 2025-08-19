@@ -89,10 +89,12 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
 
   // Initial snapshots
   try {
+    const settings = await getSettings().catch(() => ({}));
+    const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
     const [stats, activities, files] = await Promise.all([
       computeStats().catch(() => null),
       getActivities().catch(() => []),
-      Promise.resolve(listFiles(500)).catch(() => [])
+      Promise.resolve(listFiles(500, retentionDays)).catch(() => [])
     ]);
     if (stats) send('stats', stats);
     if (Array.isArray(activities)) {
@@ -146,7 +148,9 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
     try {
       const s = await computeStats();
       send('stats', s);
-      send('files', listFiles(500));
+      const settings = await getSettings().catch(() => ({}));
+      const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
+      send('files', listFiles(500, retentionDays));
       // Periodically refresh latest users as a fallback
       try {
         let latest = [];
@@ -200,8 +204,12 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
   realtime.on('stats_metrics_updated', onMetrics);
 
   // Live files -> send updated list
-  const onFilesUpdated = () => {
-    try { send('files', listFiles(500)); } catch (_) {}
+  const onFilesUpdated = async () => {
+    try {
+      const settings = await getSettings().catch(() => ({}));
+      const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
+      send('files', listFiles(500, retentionDays));
+    } catch (_) {}
   };
   realtime.on('files_updated', onFilesUpdated);
 
@@ -260,7 +268,9 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
 router.get('/files', auth, requireAdmin, async (req, res) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
-    const files = listFiles(limit);
+    const settings = await getSettings().catch(() => ({}));
+    const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
+    const files = listFiles(limit, retentionDays);
     res.json(files);
   } catch (error) {
     console.error('Get admin files error:', error);
@@ -393,7 +403,9 @@ router.delete('/files/:id', auth, requireAdmin, async (req, res) => {
     const idx = parseInt(id) - 1;
     if (Number.isNaN(idx) || idx < 0) return res.status(400).json({ error: 'Invalid file id' });
 
-    const files = listFiles(10000); // filtered to last 1 day
+    const settings = await getSettings().catch(() => ({}));
+    const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
+    const files = listFiles(10000, retentionDays); // filtered to last retention days
     const rec = files[idx];
     if (!rec) return res.status(404).json({ error: 'File not found' });
 

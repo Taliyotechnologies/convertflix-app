@@ -10,21 +10,22 @@ function detectType(ext) {
   return 'document';
 }
 
-function listFiles(limit) {
+function listFiles(limit, maxAgeDays = 7) {
   const uploadsDir = path.join(__dirname, '..', 'uploads');
   const out = [];
   if (fs.existsSync(uploadsDir)) {
     const fileList = fs.readdirSync(uploadsDir);
     const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
+    const dayMs = 24 * 60 * 60 * 1000;
+    const maxAgeMs = (Number(maxAgeDays) > 0 ? Number(maxAgeDays) : 7) * dayMs;
     let idx = 0;
     fileList.forEach((file) => {
       const filePath = path.join(uploadsDir, file);
       try {
         const st = fs.statSync(filePath);
         const ageMs = now - new Date(st.mtime).getTime();
-        if (ageMs > oneDayMs) {
-          return; // skip files older than 1 day
+        if (ageMs > maxAgeMs) {
+          return; // skip files older than retention window
         }
         const ext = path.extname(file).toLowerCase();
         const type = detectType(ext);

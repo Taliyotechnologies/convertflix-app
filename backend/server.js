@@ -66,17 +66,17 @@ app.listen(PORT, () => {
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
 
-  // Schedule retention cleanup (default 1 day); run once on startup and hourly
+  // Schedule retention cleanup (default 7 days); run once on startup and hourly
   async function runCleanup() {
     try {
       const settings = await getSettings().catch(() => ({}));
-      const days = Number(settings && settings.autoDeleteDays) || 1;
+      const days = Number(settings && settings.autoDeleteDays) || 7;
       const { count } = await cleanupOldUploads(days);
       if (count > 0) {
         console.log(`🧹 Retention cleanup removed ${count} old file(s) (> ${days} day(s))`);
       }
-      // Prune dashboard data (activities + metrics byDay) to last 14 days
-      await cleanupOldData(14);
+      // Prune dashboard data (activities + metrics byDay) to last N days (same as autoDeleteDays)
+      await cleanupOldData(days);
     } catch (e) {
       console.error('Retention cleanup run error:', e && e.message ? e.message : e);
     }

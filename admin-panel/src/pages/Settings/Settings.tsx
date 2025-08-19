@@ -18,7 +18,7 @@ const Settings: React.FC = () => {
     allowedFormats: ['jpg', 'png', 'mp4', 'mp3', 'pdf', 'docx'],
     maintenanceMode: false,
     emailNotifications: true,
-    autoDeleteDays: 30,
+    autoDeleteDays: 7,
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',

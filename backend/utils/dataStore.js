@@ -54,7 +54,7 @@ const defaultSettings = {
   allowedFormats: ['jpg', 'png', 'gif', 'webp', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'pdf', 'docx'],
   maintenanceMode: false,
   emailNotifications: true,
-  autoDeleteDays: 1
+  autoDeleteDays: 7
 };
 
 async function getSettings() {
@@ -148,9 +148,11 @@ async function recordFileProcessed({ size = 0, kind = 'processed', when = new Da
 
   // Optional: prune very old days to keep file small (keep last 90 days)
   try {
-    // Keep only the last 14 days of daily metrics
+    // Keep only the last N days of daily metrics (N = settings.autoDeleteDays, default 7)
+    const settings = await getSettings().catch(() => ({}));
+    const keepDays = Number(settings && settings.autoDeleteDays) || 7;
     const now = new Date();
-    const cutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const cutoff = new Date(now.getTime() - keepDays * 24 * 60 * 60 * 1000);
     for (const k of Object.keys(m.byDay)) {
       const d = new Date(k);
       if (d < cutoff) delete m.byDay[k];
