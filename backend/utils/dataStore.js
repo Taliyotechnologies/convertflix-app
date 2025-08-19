@@ -54,6 +54,7 @@ const defaultSettings = {
   allowedFormats: ['jpg', 'png', 'gif', 'webp', 'mp4', 'avi', 'mov', 'mp3', 'wav', 'pdf', 'docx'],
   maintenanceMode: false,
   emailNotifications: true,
+  adminNotifications: true,
   autoDeleteDays: 7
 };
 
@@ -88,7 +89,13 @@ async function addActivity(activity) {
   const list = await getActivities();
   list.push(extended);
   await writeJSON('activities', list);
-  try { realtime.emit('activity', extended); } catch (_) {}
+  try {
+    const settings = await getSettings().catch(() => ({}));
+    // Default: notifications ON unless explicitly disabled
+    if ((settings && typeof settings.adminNotifications !== 'boolean') || settings.adminNotifications) {
+      realtime.emit('activity', extended);
+    }
+  } catch (_) {}
   return extended;
 }
 

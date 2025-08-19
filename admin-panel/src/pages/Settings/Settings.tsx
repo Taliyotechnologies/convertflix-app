@@ -18,6 +18,7 @@ const Settings: React.FC = () => {
     allowedFormats: ['jpg', 'png', 'mp4', 'mp3', 'pdf', 'docx'],
     maintenanceMode: false,
     emailNotifications: true,
+    adminNotifications: true,
     autoDeleteDays: 7,
   });
   const [passwordData, setPasswordData] = useState({
@@ -49,6 +50,7 @@ const Settings: React.FC = () => {
       try {
         const updated = await updateAdminSettings(settings);
         setSettings(updated);
+        try { window.dispatchEvent(new CustomEvent('settings:updated', { detail: updated })); } catch {}
         setShowError('');
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
@@ -184,6 +186,25 @@ const Settings: React.FC = () => {
             </div>
             <p className={styles.settingDescription}>
               Send email notifications for important events
+            </p>
+          </div>
+
+          <div className={styles.settingGroup}>
+            <label className={styles.settingLabel}>Admin Notifications</label>
+            <div className={styles.toggleContainer}>
+              <input
+                type="checkbox"
+                id="adminNotifications"
+                checked={settings.adminNotifications}
+                onChange={(e) => handleSettingChange('adminNotifications', e.target.checked)}
+                className={styles.toggleInput}
+              />
+              <label htmlFor="adminNotifications" className={styles.toggleLabel}>
+                <span className={styles.toggleSlider} />
+              </label>
+            </div>
+            <p className={styles.settingDescription}>
+              Enable real-time admin activity notifications in the dashboard
             </p>
           </div>
         </div>

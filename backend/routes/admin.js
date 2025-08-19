@@ -90,6 +90,7 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
   // Initial snapshots
   try {
     const settings = await getSettings().catch(() => ({}));
+    const notificationsEnabled = ((settings && typeof settings.adminNotifications !== 'boolean') || settings.adminNotifications);
     const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
     const [stats, activities, files] = await Promise.all([
       computeStats().catch(() => null),
@@ -97,7 +98,7 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
       Promise.resolve(listFiles(500, retentionDays)).catch(() => [])
     ]);
     if (stats) send('stats', stats);
-    if (Array.isArray(activities)) {
+    if (notificationsEnabled && Array.isArray(activities)) {
       const ordered = activities.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 50);
       send('activities', ordered);
     }
@@ -189,10 +190,18 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
   }, 10000);
 
   // Live activities
+  let activitySubscribed = false;
   const onActivity = (activity) => {
     send('activity', activity);
   };
-  realtime.on('activity', onActivity);
+  try {
+    const s = await getSettings().catch(() => ({}));
+    const liveEnabled = ((s && typeof s.adminNotifications !== 'boolean') || s.adminNotifications);
+    if (liveEnabled) {
+      realtime.on('activity', onActivity);
+      activitySubscribed = true;
+    }
+  } catch (_) {}
 
   // Live metrics -> recompute and send stats
   const onMetrics = async () => {
@@ -254,7 +263,9 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
   req.on('close', () => {
     clearInterval(heartbeat);
     clearInterval(periodic);
-    try { realtime.off ? realtime.off('activity', onActivity) : realtime.removeListener('activity', onActivity); } catch (_) {}
+    if (activitySubscribed) {
+      try { realtime.off ? realtime.off('activity', onActivity) : realtime.removeListener('activity', onActivity); } catch (_) {}
+    }
     try { realtime.off ? realtime.off('stats_metrics_updated', onMetrics) : realtime.removeListener('stats_metrics_updated', onMetrics); } catch (_) {}
     try { realtime.off ? realtime.off('files_updated', onFilesUpdated) : realtime.removeListener('files_updated', onFilesUpdated); } catch (_) {}
     try { realtime.off ? realtime.off('users_updated', onUsersUpdated) : realtime.removeListener('users_updated', onUsersUpdated); } catch (_) {}
@@ -385,8 +396,8 @@ router.get('/settings', auth, requireAdmin, async (req, res) => {
 // @access  Private (Admin)
 router.put('/settings', auth, requireAdmin, async (req, res) => {
   try {
-    const { siteName, maxFileSize, allowedFormats, maintenanceMode, emailNotifications, autoDeleteDays } = req.body || {};
-    const updated = await saveSettings({ siteName, maxFileSize, allowedFormats, maintenanceMode, emailNotifications, autoDeleteDays });
+    const { siteName, maxFileSize, allowedFormats, maintenanceMode, emailNotifications, adminNotifications, autoDeleteDays } = req.body || {};
+    const updated = await saveSettings({ siteName, maxFileSize, allowedFormats, maintenanceMode, emailNotifications, adminNotifications, autoDeleteDays });
     res.json(updated);
   } catch (error) {
     console.error('Update admin settings error:', error);

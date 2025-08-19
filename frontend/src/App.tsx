@@ -4,6 +4,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar/Navbar';
+import VisitTracker from './components/VisitTracker/VisitTracker';
 import Footer from './components/Footer/Footer';
 import Maintenance from './pages/Maintenance/Maintenance';
 import { publicAPI } from './services/api';
@@ -74,6 +75,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <Router>
+            <VisitTracker />
             <div className="App">
               {!ready ? (
                 <div style={{ minHeight: '100vh' }} />

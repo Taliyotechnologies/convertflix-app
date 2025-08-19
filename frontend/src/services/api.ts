@@ -187,6 +187,16 @@ export const publicAPI = {
   getStatus: async (): Promise<{ maintenanceMode: boolean; siteName?: string }> => {
     return apiRequest('/public/status');
   },
+  trackVisit: async (path: string, referrer?: string, userAgent?: string, source?: string): Promise<void> => {
+    try {
+      await apiRequest('/public/visit', {
+        method: 'POST',
+        body: JSON.stringify({ path, referrer, userAgent, source: source || 'frontend' }),
+      });
+    } catch (_) {
+      // swallow errors; visit tracking should not break the UX
+    }
+  },
 };
 
 export default {

@@ -39,6 +39,7 @@ export interface AdminSettings {
   allowedFormats: string[];
   maintenanceMode: boolean;
   emailNotifications: boolean;
+  adminNotifications: boolean;
   autoDeleteDays: number;
 }
 
