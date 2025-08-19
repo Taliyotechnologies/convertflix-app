@@ -13,7 +13,26 @@ const Files: React.FC = () => {
   const [filterType, setFilterType] = useState('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
-  const [files, setFiles] = useState<FileRecord[]>([]);
+  const [files, setFiles] = useState<FileRecord[]>(() => {
+    // Hydrate from localStorage cache if within 7 days
+    try {
+      const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+      const raw = localStorage.getItem('cf_admin_files_cache_v1');
+      const ts = Number(localStorage.getItem('cf_admin_files_cache_ts_v1') || '0');
+      if (raw && ts && (Date.now() - ts) < TTL_MS) {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      }
+    } catch {}
+    return [];
+  });
+
+  const persistFiles = (arr: FileRecord[]) => {
+    try {
+      localStorage.setItem('cf_admin_files_cache_v1', JSON.stringify(arr));
+      localStorage.setItem('cf_admin_files_cache_ts_v1', String(Date.now()));
+    } catch {}
+  };
 
   // Preview state
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -31,7 +50,9 @@ const Files: React.FC = () => {
       try {
         const f = await getFiles(500).catch(() => []);
         if (!alive) return;
-        setFiles(f || []);
+        const next = (f || []).slice(0, 500);
+        setFiles(next);
+        persistFiles(next);
       } catch {}
     })();
     return () => { alive = false; };
@@ -44,13 +65,22 @@ const Files: React.FC = () => {
       onFileUpsert: (file) => {
         setFiles(prev => {
           const idx = prev.findIndex(x => x.id === file.id);
-          if (idx === -1) return [file, ...prev].slice(0, 500);
+          if (idx === -1) {
+            const next = [file, ...prev].slice(0, 500);
+            persistFiles(next);
+            return next;
+          }
           const next = [...prev];
           next[idx] = { ...next[idx], ...file };
+          persistFiles(next);
           return next;
         });
       },
-      onFilesReplace: (arr) => setFiles(arr.slice(0, 500)),
+      onFilesReplace: (arr) => {
+        const next = arr.slice(0, 500);
+        setFiles(next);
+        persistFiles(next);
+      },
     });
     return () => { try { unsub(); } catch {} };
   }, []);
@@ -61,7 +91,11 @@ const Files: React.FC = () => {
     const id = setInterval(async () => {
       try {
         const f = await getFiles(500).catch(() => null);
-        if (f) setFiles(f);
+        if (f) {
+          const next = f.slice(0, 500);
+          setFiles(next);
+          persistFiles(next);
+        }
       } catch {}
     }, 10000);
     return () => clearInterval(id);
@@ -80,7 +114,11 @@ const Files: React.FC = () => {
     (async () => {
       try {
         await deleteFile(selectedFile.id);
-        setFiles(prev => prev.filter(f => f.id !== selectedFile.id));
+        setFiles(prev => {
+          const next = prev.filter(f => f.id !== selectedFile.id);
+          persistFiles(next);
+          return next;
+        });
       } catch (e) {
         // Optionally surface error UI
         console.error('Delete failed', e);
