@@ -1,0 +1,176 @@
+/* Maintenance Page Styling */
+
+.wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(1200px 600px at 30% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+              radial-gradient(900px 500px at 100% 10%, rgba(20, 184, 166, 0.12), transparent 60%),
+              linear-gradient(135deg, #0f172a 0%, #111827 100%);
+  color: var(--text-secondary);
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(60% 60% at 50% 50%, transparent 60%, rgba(0,0,0,0.3) 100%);
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  padding: 2rem 2rem 2.25rem;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  backdrop-filter: blur(10px);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #e5e7eb;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.title {
+  color: #e5e7eb;
+  text-align: center;
+  font-size: clamp(1.5rem, 2.5vw + 1rem, 2.4rem);
+  font-weight: 700;
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  max-width: 56ch;
+}
+
+.illustration {
+  margin: 1.25rem auto 0.75rem;
+  width: 92px;
+  height: 92px;
+  border-radius: 20px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(60px 60px at 50% 40%, rgba(99,102,241,0.18), transparent 60%),
+              linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  border: 1px solid rgba(148,163,184,0.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 30px rgba(0,0,0,0.25);
+}
+
+.glow {
+  position: absolute;
+  inset: -8px;
+  z-index: 0;
+  border-radius: 24px;
+  background: radial-gradient(70px 70px at 50% 50%, rgba(99,102,241,0.18), transparent 70%);
+  filter: blur(6px);
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(148,163,184,0.25);
+  border-top-color: #60a5fa;
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.meta {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #60a5fa;
+  box-shadow: 0 0 0 0 rgba(96,165,250,0.7);
+  animation: pulse 2s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(96,165,250,0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(96,165,250,0); }
+  100% { box-shadow: 0 0 0 0 rgba(96,165,250,0); }
+}
+
+.actions {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn {
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 1px solid rgba(148,163,184,0.2);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.primary {
+  background: linear-gradient(90deg, var(--button-start), var(--button-end));
+  color: white;
+  border: none;
+  box-shadow: 0 10px 20px rgba(37,99,235,0.25);
+}
+.primary:hover { transform: translateY(-1px); }
+
+.secondary {
+  background: rgba(148,163,184,0.08);
+  color: #e5e7eb;
+}
+.secondary:hover { background: rgba(148,163,184,0.12); }
+
+.footerNote {
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .card { padding: 1.5rem 1.25rem; }
+}
