@@ -2,6 +2,14 @@ import type { FileRecord, ActivityLog, DashboardStats, User } from '../types';
 
 const BASE: string = (import.meta as any).env?.VITE_API_BASE_URL as string || '';
 
+function emitUnauthorized() {
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
+  } catch {}
+}
+
 export type RealtimeHandlers = {
   onFileUpsert?: (file: FileRecord) => void;
   onFilesReplace?: (files: FileRecord[]) => void;
@@ -53,6 +61,7 @@ export function subscribeSSE(handlers: RealtimeHandlers): () => void {
   }
 
   const es = new EventSource(url);
+  let lastAuthCheck = 0;
 
   const handlePayload = (raw: any) => {
     const payload = raw?.payload ?? raw;
@@ -115,9 +124,21 @@ export function subscribeSSE(handlers: RealtimeHandlers): () => void {
     });
   });
 
-  es.onerror = () => {
-    // Let the browser retry automatically; minimal handling here
-    // console.warn('SSE connection error');
+  es.onerror = async () => {
+    // Let the browser retry automatically; do a light auth check to detect expirations
+    const now = Date.now();
+    if (now - lastAuthCheck < 5000) return; // throttle checks
+    lastAuthCheck = now;
+    try {
+      const token = (typeof window !== 'undefined') ? (localStorage.getItem('adminToken') || '') : '';
+      if (!BASE || !token) return;
+      const res = await fetch(`${BASE}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.status === 401 || res.status === 403) emitUnauthorized();
+    } catch {
+      // Ignore network errors here; SSE will retry
+    }
   };
 
   return () => {

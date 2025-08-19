@@ -8,13 +8,26 @@ import Files from './pages/Files/Files';
 import Settings from './pages/Settings/Settings';
 import Analytics from './pages/Analytics/Analytics';
 import Login from './pages/Login/Login';
-import ForgotPassword from './pages/Auth/ForgotPassword';
-import ResetPassword from './pages/Auth/ResetPassword';
+import ForgotPassword from './pages/Auth/ForgotPassword.tsx';
+import ResetPassword from './pages/Auth/ResetPassword.tsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import styles from './App.module.css';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading, logout } = useAuth();
+
+  // During initial auth check
+  if (loading) {
+    return (
+      <div className={styles.app}>
+        <div className={styles.mainContent}>
+          <main className={styles.content}>
+            <div style={{ padding: '2rem' }}>Loading...</div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   // If not authenticated, show auth routes (login/forgot/reset)
   if (!isAuthenticated) {
@@ -38,6 +51,14 @@ const AppContent: React.FC = () => {
             <div style={{ padding: '2rem' }}>
               <h2>Access denied</h2>
               <p>You do not have permission to access the admin panel.</p>
+              <div style={{ marginTop: '1rem' }}>
+                <button onClick={logout} style={{
+                  background: 'linear-gradient(90deg, var(--button-start), var(--button-end))',
+                  color: '#fff',
+                  padding: '0.6rem 1rem',
+                  borderRadius: '0.5rem'
+                }}>Switch account</button>
+              </div>
             </div>
           </main>
         </div>

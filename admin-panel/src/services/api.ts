@@ -11,6 +11,14 @@ function normalizeHeaders(h?: HeadersInit): Record<string, string> {
   return h as Record<string, string>;
 }
 
+function emitUnauthorized() {
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
+  } catch {}
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem('adminToken');
   const baseHeaders: Record<string, string> = { 'Accept': 'application/json' };
@@ -18,10 +26,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const mergedHeaders = { ...baseHeaders, ...normalizeHeaders(init?.headers) };
   const res = await fetch(BASE + path, { ...(init || {}), headers: mergedHeaders });
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) emitUnauthorized();
     const text = await res.text().catch(() => '');
     throw new Error(`API ${path} failed: ${res.status} ${res.statusText} ${text}`);
   }
-  return res.json() as Promise<T>;
+  // Handle empty responses safely
+  const text = await res.text();
+  try {
+    return (text ? JSON.parse(text) : {}) as T;
+  } catch {
+    // If not JSON, throw for visibility
+    throw new Error(`API ${path} returned non-JSON response`);
+  }
 }
 
 async function requestOk(path: string, init?: RequestInit): Promise<boolean> {
@@ -31,6 +47,7 @@ async function requestOk(path: string, init?: RequestInit): Promise<boolean> {
   const mergedHeaders = { ...baseHeaders, ...normalizeHeaders(init?.headers) };
   const res = await fetch(BASE + path, { ...(init || {}), headers: mergedHeaders });
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) emitUnauthorized();
     const text = await res.text().catch(() => '');
     throw new Error(`API ${path} failed: ${res.status} ${res.statusText} ${text}`);
   }

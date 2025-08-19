@@ -5,6 +5,7 @@ import type { User } from '../types';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -29,23 +30,115 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const token = localStorage.getItem('adminToken');
-    const userData = localStorage.getItem('adminUser');
-    
-    if (token && userData) {
+    let cancelled = false;
+
+    async function init() {
       try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
+        const token = localStorage.getItem('adminToken');
+        const userData = localStorage.getItem('adminUser');
+
+        if (token) {
+          // If API base is configured, verify token by fetching profile
+          if (API_BASE) {
+            try {
+              const res = await fetch(`${API_BASE}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (res.ok) {
+                const data = await res.json();
+                const verifiedUser: User = {
+                  id: data.user.id || '1',
+                  email: data.user.email,
+                  name: data.user.fullName || 'Admin User',
+                  role: data.user.role || 'user',
+                  createdAt: new Date().toISOString(),
+                  lastLogin: new Date().toISOString(),
+                  status: 'active',
+                  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
+                };
+                localStorage.setItem('adminUser', JSON.stringify(verifiedUser));
+                if (!cancelled) {
+                  setUser(verifiedUser);
+                  setIsAuthenticated(true);
+                }
+              } else {
+                // Token invalid -> clear session
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                if (!cancelled) {
+                  setUser(null);
+                  setIsAuthenticated(false);
+                }
+              }
+            } catch (_) {
+              // Network error: fall back to local user if available
+              if (userData) {
+                try {
+                  const parsedUser = JSON.parse(userData);
+                  if (!cancelled) {
+                    setUser(parsedUser);
+                    setIsAuthenticated(true);
+                  }
+                } catch {}
+              }
+            }
+          } else if (userData) {
+            // No API base configured: trust local user
+            try {
+              const parsedUser = JSON.parse(userData);
+              if (!cancelled) {
+                setUser(parsedUser);
+                setIsAuthenticated(true);
+              }
+            } catch {}
+          }
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
+
+    init();
+
+    // Listen for unauthorized events from API layer and cross-tab storage changes
+    const onUnauthorized = () => {
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
+      if (!cancelled) {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'adminToken' || e.key === 'adminUser') {
+        const t = localStorage.getItem('adminToken');
+        const u = localStorage.getItem('adminUser');
+        if (!t || !u) {
+          setUser(null);
+          setIsAuthenticated(false);
+        } else {
+          try {
+            const parsed = JSON.parse(u);
+            setUser(parsed);
+            setIsAuthenticated(true);
+          } catch {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        }
+      }
+    };
+    try { window.addEventListener('auth:unauthorized', onUnauthorized as any); } catch {}
+    try { window.addEventListener('storage', onStorage); } catch {}
+
+    return () => {
+      cancelled = true;
+      try { window.removeEventListener('auth:unauthorized', onUnauthorized as any); } catch {}
+      try { window.removeEventListener('storage', onStorage); } catch {}
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -95,6 +188,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user,
     isAuthenticated,
+    loading,
     login,
     logout
   };
