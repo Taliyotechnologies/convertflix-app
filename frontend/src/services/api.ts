@@ -182,10 +182,18 @@ export const userAPI = {
   },
 };
 
+// Public API (no auth required)
+export const publicAPI = {
+  getStatus: async (): Promise<{ maintenanceMode: boolean; siteName?: string }> => {
+    return apiRequest('/public/status');
+  },
+};
+
 export default {
   auth: authAPI,
   tools: toolsAPI,
   user: userAPI,
+  public: publicAPI,
   formatFileSize,
   getFileExtension,
 };

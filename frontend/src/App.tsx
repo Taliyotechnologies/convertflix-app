@@ -1,9 +1,12 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar/Navbar';
 import Footer from './components/Footer/Footer';
+import Maintenance from './pages/Maintenance/Maintenance';
+import { publicAPI } from './services/api';
 
 // Pages
 import Home from './pages/Home/Home';
@@ -36,50 +39,88 @@ import './styles/global.css';
 import './App.css';
 
 function App() {
+  const [maintenance, setMaintenance] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [siteName, setSiteName] = useState('ConvertFlix');
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchStatus = async () => {
+      try {
+        const res = await publicAPI.getStatus();
+        if (!mounted) return;
+        setMaintenance(!!res.maintenanceMode);
+        if (res.siteName) setSiteName(res.siteName);
+      } catch (_) {}
+      finally {
+        if (mounted) setReady(true);
+      }
+    };
+    fetchStatus();
+    const t = setInterval(fetchStatus, 10000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') fetchStatus();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      mounted = false;
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+
   return (
     <GoogleOAuthProvider clientId="your-google-client-id">
       <ThemeProvider>
         <AuthProvider>
           <Router>
-          <div className="App">
-            <Navbar />
-            <main>
-              <Routes>
-                {/* Home */}
-                <Route path="/" element={<Home />} />
-                
-                {/* Tool Pages */}
-                <Route path="/tools/compress-image" element={<CompressImage />} />
-                <Route path="/tools/compress-video" element={<CompressVideo />} />
-                <Route path="/tools/compress-pdf" element={<CompressPDF />} />
-                <Route path="/tools/compress-audio" element={<CompressAudio />} />
-                <Route path="/tools/convert-image" element={<ConvertImage />} />
-                <Route path="/tools/convert-video" element={<ConvertVideo />} />
-                <Route path="/tools/convert-pdf" element={<ConvertPDF />} />
-                <Route path="/tools/convert-audio" element={<ConvertAudio />} />
-                
-                {/* Company Pages */}
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/owner" element={<Owner />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                
-                {/* Auth Pages */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                
-                {/* 404 - Redirect to home for now */}
-                <Route path="*" element={<Home />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+            <div className="App">
+              {!ready ? (
+                <div style={{ minHeight: '100vh' }} />
+              ) : maintenance ? (
+                <Maintenance siteName={siteName} />
+              ) : (
+                <>
+                  <Navbar />
+                  <main>
+                    <Routes>
+                      {/* Home */}
+                      <Route path="/" element={<Home />} />
+
+                      {/* Tool Pages */}
+                      <Route path="/tools/compress-image" element={<CompressImage />} />
+                      <Route path="/tools/compress-video" element={<CompressVideo />} />
+                      <Route path="/tools/compress-pdf" element={<CompressPDF />} />
+                      <Route path="/tools/compress-audio" element={<CompressAudio />} />
+                      <Route path="/tools/convert-image" element={<ConvertImage />} />
+                      <Route path="/tools/convert-video" element={<ConvertVideo />} />
+                      <Route path="/tools/convert-pdf" element={<ConvertPDF />} />
+                      <Route path="/tools/convert-audio" element={<ConvertAudio />} />
+
+                      {/* Company Pages */}
+                      <Route path="/about" element={<About />} />
+                      <Route path="/contact" element={<Contact />} />
+                      <Route path="/owner" element={<Owner />} />
+                      <Route path="/terms" element={<Terms />} />
+                      <Route path="/privacy" element={<Privacy />} />
+
+                      {/* Auth Pages */}
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/signup" element={<Signup />} />
+                      <Route path="/forgot-password" element={<ForgotPassword />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
+
+                      {/* 404 - Redirect to home for now */}
+                      <Route path="*" element={<Home />} />
+                    </Routes>
+                  </main>
+                  <Footer />
+                </>
+              )}
+            </div>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
     </GoogleOAuthProvider>
   );
 }
