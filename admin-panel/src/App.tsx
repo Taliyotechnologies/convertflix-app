@@ -19,12 +19,8 @@ const AppContent: React.FC = () => {
   // During initial auth check
   if (loading) {
     return (
-      <div className={styles.app}>
-        <div className={styles.mainContent}>
-          <main className={styles.content}>
-            <div style={{ padding: '2rem' }}>Loading...</div>
-          </main>
-        </div>
+      <div className={`${styles.app} ${styles.centered}`}>
+        <div style={{ padding: '2rem' }}>Loading...</div>
       </div>
     );
   }
@@ -47,8 +43,8 @@ const AppContent: React.FC = () => {
     return (
       <div className={styles.app}>
         <div className={styles.mainContent}>
-          <main className={styles.content}>
-            <div style={{ padding: '2rem' }}>
+          <main className={`${styles.content} ${styles.centered}`}>
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
               <h2>Access denied</h2>
               <p>You do not have permission to access the admin panel.</p>
               <div style={{ marginTop: '1rem' }}>
@@ -67,7 +63,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className={styles.app}>
+    <div className={`${styles.app} ${styles.withSidebar}`}>
       <Sidebar />
       <div className={styles.mainContent}>
         <Header />

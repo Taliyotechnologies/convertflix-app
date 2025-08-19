@@ -9,6 +9,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Apply sidebar offset only when sidebar is present */
+.app.withSidebar .mainContent {
   margin-left: 280px; /* Sidebar width */
 }
 
@@ -16,6 +20,14 @@
   flex: 1;
   overflow-y: auto;
   background-color: var(--bg-secondary);
+}
+
+/* Centered layout for Loading / Access Denied screens */
+.centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
 }
 
 /* Responsive Design */
