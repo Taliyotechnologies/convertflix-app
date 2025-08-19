@@ -2,8 +2,19 @@ const express = require('express');
 const router = express.Router();
 const { uploadImage, uploadVideo, uploadAudio, uploadPDF, uploadAny } = require('../middleware/upload');
 const { addActivity, recordFileProcessed } = require('../utils/dataStore');
-// Speed preset for tools: 'fast' | 'balanced' | 'quality' (default: 'fast')
+// Speed preset for tools: 'turbo' | 'fast' | 'balanced' | 'quality' (default: 'fast')
 const SPEED = (process.env.TOOLS_SPEED_PRESET || process.env.SPEED_PRESET || 'fast').toLowerCase();
+// Allow per-request override via query/header; fallback to env default
+const SPEED_DEFAULT = SPEED;
+function getSpeed(req) {
+  const q = (req && req.query && req.query.speed) ? String(req.query.speed).toLowerCase() : '';
+  const h = (req && req.headers && (req.headers['x-tools-speed'] || req.headers['x-speed-preset']))
+    ? String(req.headers['x-tools-speed'] || req.headers['x-speed-preset']).toLowerCase()
+    : '';
+  const s = q || h || SPEED_DEFAULT;
+  if (s === 'ultrafast') return 'turbo';
+  return ['turbo', 'fast', 'balanced', 'quality'].includes(s) ? s : SPEED_DEFAULT;
+}
 
 // @route   POST /api/tools/compress-image
 // @desc    Compress image file
@@ -68,6 +79,7 @@ router.post('/compress-image', uploadImage, async (req, res) => {
     const sharp = require('sharp');
     const path = require('path');
     const fs = require('fs');
+    const speed = getSpeed(req);
 
     const inputPath = req.file.path;
     const outputDir = path.dirname(inputPath);
@@ -81,21 +93,21 @@ router.post('/compress-image', uploadImage, async (req, res) => {
     const generateCandidates = async () => {
       const candidates = [];
       const originalSize = fs.statSync(inputPath).size;
-      if (SPEED !== 'quality') {
+      if (speed !== 'quality') {
         // FAST/BALANCED: single-pass, low-effort encodes
         try {
           const p1 = sharp(inputPath, { sequentialRead: true });
           if (ext === '.jpg' || ext === '.jpeg') {
-            await p1.jpeg({ quality: 65, mozjpeg: false, progressive: false }).toFile(outputOriginalFmt);
+            await p1.jpeg({ quality: speed === 'turbo' ? 55 : 65, mozjpeg: false, progressive: false, chromaSubsampling: '4:2:0' }).toFile(outputOriginalFmt);
             candidates.push(outputOriginalFmt);
           } else if (ext === '.png') {
-            await p1.png({ compressionLevel: 6, palette: true }).toFile(outputOriginalFmt);
+            await p1.png({ compressionLevel: speed === 'turbo' ? 1 : 3, palette: true }).toFile(outputOriginalFmt);
             candidates.push(outputOriginalFmt);
           } else if (ext === '.webp') {
-            await p1.webp({ quality: 70 }).toFile(outputOriginalFmt);
+            await p1.webp({ quality: speed === 'turbo' ? 68 : 70, effort: 0 }).toFile(outputOriginalFmt);
             candidates.push(outputOriginalFmt);
           } else if (ext === '.avif') {
-            await p1.avif({ quality: 40, effort: 2 }).toFile(outputOriginalFmt);
+            await p1.avif({ quality: speed === 'turbo' ? 35 : 40, effort: 1 }).toFile(outputOriginalFmt);
             candidates.push(outputOriginalFmt);
           } else {
             await p1.jpeg({ quality: 65, mozjpeg: false, progressive: false }).toFile(outputOriginalFmt);
@@ -104,7 +116,7 @@ router.post('/compress-image', uploadImage, async (req, res) => {
         } catch (_) {}
         // Also try a fast WebP candidate and pick it only if smaller than original
         try {
-          await sharp(inputPath, { sequentialRead: true }).webp({ quality: 75 }).toFile(outputWebp);
+          await sharp(inputPath, { sequentialRead: true }).webp({ quality: speed === 'turbo' ? 70 : 72, effort: 0 }).toFile(outputWebp);
           candidates.push(outputWebp);
         } catch (_) {}
       } else {
@@ -224,6 +236,7 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
     } catch (_) {}
     const path = require('path');
     const fs = require('fs');
+    const speed = getSpeed(req);
 
     const inputPath = req.file.path;
     const outputPath = path.join(path.dirname(inputPath), `compressed-${req.file.filename}`);
@@ -231,8 +244,8 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
     // Get original file size
     const originalSize = fs.statSync(inputPath).size;
     // Choose preset/CRF for speed vs quality
-    const preset = SPEED === 'quality' ? 'slow' : (SPEED === 'balanced' ? 'fast' : 'veryfast');
-    const crf = SPEED === 'quality' ? 20 : (SPEED === 'balanced' ? 22 : 24);
+    const preset = speed === 'quality' ? 'slow' : (speed === 'balanced' ? 'fast' : (speed === 'fast' ? 'veryfast' : 'ultrafast'));
+    const crf = speed === 'quality' ? 20 : (speed === 'balanced' ? 22 : (speed === 'fast' ? 24 : 28));
 
     // Compress video with single-pass CRF encode
     await new Promise((resolve, reject) => {
@@ -258,7 +271,7 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
       await new Promise((resolve, reject) => {
         ffmpeg(outputPath)
           .outputOptions([
-            '-preset', 'veryfast',
+            '-preset', speed === 'turbo' ? 'ultrafast' : 'veryfast',
             '-crf', '30',
             '-b:a', '96k',
             '-movflags', '+faststart',
@@ -341,6 +354,7 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
     }
     const path = require('path');
     const fs = require('fs');
+    const speed = getSpeed(req);
 
     const inputPath = req.file.path;
     const baseName = path.parse(req.file.filename).name;
@@ -351,7 +365,7 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
     const originalSize = fs.statSync(inputPath).size;
 
     // Compress audio
-    const targetAudioBitrate = SPEED === 'quality' ? '192k' : (SPEED === 'balanced' ? '128k' : '96k');
+    const targetAudioBitrate = speed === 'quality' ? '192k' : (speed === 'balanced' ? '160k' : (speed === 'fast' ? '128k' : (speed === 'turbo' ? '96k' : '96k')));
     await new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .noVideo()
@@ -413,6 +427,112 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
   }
 });
 
+// @route   POST /api/tools/convert-audio
+// @desc    Convert audio format
+// @access  Public
+router.post('/convert-audio', uploadAudio, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No audio file uploaded' });
+    }
+
+    const { targetFormat } = req.body;
+    if (!targetFormat || !['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(targetFormat)) {
+      return res.status(400).json({ error: 'Invalid target format' });
+    }
+
+    // Process audio conversion using FFmpeg (convert only; prioritize quality)
+    const ffmpeg = require('fluent-ffmpeg');
+    const ffmpegPath = require('ffmpeg-static');
+    if (ffmpegPath) {
+      ffmpeg.setFfmpegPath(ffmpegPath);
+    }
+    const path = require('path');
+    const fs = require('fs');
+    const speed = getSpeed(req);
+
+    const inputPath = req.file.path;
+    const outputPath = path.join(path.dirname(inputPath), `converted-${path.parse(req.file.filename).name}.${targetFormat}`);
+
+    // Choose codec based on target format
+    const run = (codecArgs) => new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .outputOptions(codecArgs)
+        .on('end', resolve)
+        .on('error', reject)
+        .save(outputPath);
+    });
+
+    const ext = targetFormat.toLowerCase();
+    let codecArgs = [];
+    if (ext === 'mp3') {
+      // Prefer libmp3lame if available; otherwise return error instructing alternative
+      codecArgs = ['-c:a', 'libmp3lame', '-q:a', '0'];
+      try {
+        await run(codecArgs);
+      } catch (e) {
+        return res.status(400).json({ error: 'MP3 encoding not supported on this server build. Try AAC or OGG.' });
+      }
+    } else if (ext === 'wav') {
+      codecArgs = ['-c:a', 'pcm_s16le'];
+      await run(codecArgs);
+    } else if (ext === 'flac') {
+      codecArgs = ['-c:a', 'flac'];
+      await run(codecArgs);
+    } else if (ext === 'aac' || ext === 'm4a') {
+      const aacBitrate = speed === 'quality' ? '192k' : (speed === 'balanced' ? '160k' : (speed === 'fast' ? '128k' : (speed === 'turbo' ? '96k' : '96k')));
+      codecArgs = ['-c:a', 'aac', '-b:a', aacBitrate, '-movflags', '+faststart'];
+      await run(codecArgs);
+    } else if (ext === 'ogg' || ext === 'oga') {
+      const opusBitrate = speed === 'quality' ? '160k' : (speed === 'balanced' ? '128k' : (speed === 'fast' ? '112k' : (speed === 'turbo' ? '96k' : '96k')));
+      codecArgs = ['-c:a', 'libopus', '-b:a', opusBitrate];
+      await run(codecArgs);
+    } else {
+      return res.status(400).json({ error: 'Unsupported target audio format' });
+    }
+
+    // Get file sizes
+    const originalSize = fs.statSync(inputPath).size;
+    const convertedSize = fs.statSync(outputPath).size;
+    const savings = ((originalSize - convertedSize) / originalSize * 100).toFixed(2);
+
+    // Clean up original file (handle Windows EBUSY/EPERM gracefully)
+    try {
+      fs.unlinkSync(inputPath);
+    } catch (err) {
+      if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
+        setTimeout(() => {
+          try { fs.unlinkSync(inputPath); } catch (_) {}
+        }, 500);
+      }
+    }
+
+    try { await recordFileProcessed({ size: originalSize, kind: 'converted' }); } catch (_) {}
+    try {
+      await addActivity({
+        type: 'audio_convert',
+        message: `Audio converted to ${targetFormat.toUpperCase()}: ${path.basename(outputPath)}`,
+        severity: 'info',
+        userId: (req.user && req.user.userId) ? req.user.userId : 'anonymous',
+        meta: { originalSize, convertedSize }
+      });
+    } catch (_) {}
+
+    res.json({
+      success: true,
+      message: `Audio converted to ${targetFormat.toUpperCase()} successfully`,
+      originalSize,
+      convertedSize,
+      compressedSize: convertedSize,
+      savings,
+      downloadUrl: `/uploads/${path.basename(outputPath)}`
+    });
+  } catch (error) {
+    console.error('Audio conversion error:', error);
+    res.status(500).json({ error: 'Error converting audio' });
+  }
+});
+
 // @route   POST /api/tools/compress-pdf
 // @desc    Compress PDF file
 // @access  Public
@@ -426,6 +546,7 @@ router.post('/compress-pdf', uploadPDF, async (req, res) => {
     const { PDFDocument } = require('pdf-lib');
     const fs = require('fs');
     const path = require('path');
+    const speed = getSpeed(req);
 
     const inputPath = req.file.path;
     let workingPath = inputPath; // path of current best output
@@ -496,11 +617,12 @@ router.post('/compress-pdf', uploadPDF, async (req, res) => {
 
     // Step 2: If pdf-lib failed or savings below threshold, try GS (threshold depends on SPEED)
     const currentSavings = ((originalSize - compressedSize) / originalSize) * 100;
-    const gsThreshold = SPEED === 'quality' ? 30 : (SPEED === 'balanced' ? 25 : 18);
-    if (!pdfLibOk || currentSavings < gsThreshold) {
+    const gsThreshold = speed === 'quality' ? 30 : (speed === 'balanced' ? 25 : (speed === 'fast' ? 18 : 10));
+    // Skip Ghostscript entirely for 'turbo' to maximize speed
+    if (speed !== 'turbo' && (!pdfLibOk || currentSavings < gsThreshold)) {
       const gs1 = await runGhostscript(workingPath, '/ebook', 110);
       let best = gs1 && gs1.size < compressedSize ? gs1 : null;
-      if (SPEED === 'quality') {
+      if (speed === 'quality') {
         if (!best || ((originalSize - best.size) / originalSize) * 100 < gsThreshold) {
           const gs2 = await runGhostscript(workingPath, '/screen', 96);
           if (gs2 && (!best || gs2.size < best.size)) best = gs2;
@@ -572,6 +694,7 @@ router.post('/convert-image', uploadImage, async (req, res) => {
     const sharp = require('sharp');
     const path = require('path');
     const fs = require('fs');
+    const speed = getSpeed(req);
 
     const inputPath = req.file.path;
     const outputPath = path.join(path.dirname(inputPath), `converted-${path.parse(req.file.filename).name}.${requested}`);
@@ -579,19 +702,20 @@ router.post('/convert-image', uploadImage, async (req, res) => {
     // Convert image with maximum quality to preserve original quality (no compression)
     const image = sharp(inputPath).withMetadata();
     if (sharpFormat === 'jpeg') {
-      await image.jpeg({ quality: 100, progressive: true }).toFile(outputPath);
+      await image.jpeg({ quality: speed === 'quality' ? 100 : (speed === 'balanced' ? 90 : (speed === 'fast' ? 80 : (speed === 'turbo' ? 70 : 80))), progressive: true }).toFile(outputPath);
     } else if (sharpFormat === 'png') {
-      await image.png({ compressionLevel: 0 }).toFile(outputPath);
+      // Lower compressionLevel is faster; use higher level only for 'quality'
+      await image.png({ compressionLevel: speed === 'quality' ? 9 : (speed === 'balanced' ? 6 : (speed === 'fast' ? 3 : 1)) }).toFile(outputPath);
     } else if (sharpFormat === 'webp') {
-      await image.webp({ quality: 100 }).toFile(outputPath);
+      await image.webp({ quality: speed === 'quality' ? 100 : (speed === 'balanced' ? 90 : (speed === 'fast' ? 80 : (speed === 'turbo' ? 70 : 80))) }).toFile(outputPath);
     } else if (sharpFormat === 'gif') {
       await image.gif().toFile(outputPath);
     } else if (sharpFormat === 'bmp') {
       await image.bmp().toFile(outputPath);
     } else if (sharpFormat === 'tiff') {
-      await image.tiff({ quality: 100 }).toFile(outputPath);
+      await image.tiff({ quality: speed === 'quality' ? 100 : (speed === 'balanced' ? 90 : (speed === 'fast' ? 80 : (speed === 'turbo' ? 70 : 80))) }).toFile(outputPath);
     } else if (sharpFormat === 'avif') {
-      await image.avif({ quality: 100 }).toFile(outputPath);
+      await image.avif({ quality: speed === 'quality' ? 100 : (speed === 'balanced' ? 90 : (speed === 'fast' ? 80 : 70)), effort: speed === 'turbo' ? 1 : (speed === 'fast' ? 2 : (speed === 'balanced' ? 3 : 4)) }).toFile(outputPath);
     } else if (sharpFormat === 'ico') {
       // ICO format - create multiple sizes for favicon
       await image.resize(32, 32).png().toFile(outputPath);
@@ -599,21 +723,21 @@ router.post('/convert-image', uploadImage, async (req, res) => {
       await image.toFormat(sharpFormat).toFile(outputPath);
     }
 
-  // Get file sizes
-  const originalSize = fs.statSync(inputPath).size;
-  const convertedSize = fs.statSync(outputPath).size;
-  const savings = ((originalSize - convertedSize) / originalSize * 100).toFixed(2);
+    // Get file sizes
+    const originalSize = fs.statSync(inputPath).size;
+    const convertedSize = fs.statSync(outputPath).size;
+    const savings = ((originalSize - convertedSize) / originalSize * 100).toFixed(2);
 
-  // Clean up original file (handle Windows EBUSY/EPERM gracefully)
-  try {
-    fs.unlinkSync(inputPath);
-  } catch (err) {
-    if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
-      setTimeout(() => {
-        try { fs.unlinkSync(inputPath); } catch (_) {}
-      }, 500);
+    // Clean up original file (handle Windows EBUSY/EPERM gracefully)
+    try {
+      fs.unlinkSync(inputPath);
+    } catch (err) {
+      if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
+        setTimeout(() => {
+          try { fs.unlinkSync(inputPath); } catch (_) {}
+        }, 500);
+      }
     }
-  }
 
     try { await recordFileProcessed({ size: originalSize, kind: 'converted' }); } catch (_) {}
     try {
@@ -665,6 +789,7 @@ router.post('/convert-video', uploadVideo, async (req, res) => {
     }
     const path = require('path');
     const fs = require('fs');
+    const speed = getSpeed(req);
 
     const inputPath = req.file.path;
     const outputPath = path.join(path.dirname(inputPath), `converted-${path.parse(req.file.filename).name}.${targetFormat}`);
@@ -678,8 +803,8 @@ router.post('/convert-video', uploadVideo, async (req, res) => {
         .save(outputPath);
     });
     const tryReencode = () => new Promise((resolve, reject) => {
-      const presetCv = SPEED === 'quality' ? 'slow' : (SPEED === 'balanced' ? 'fast' : 'veryfast');
-      const crfCv = SPEED === 'quality' ? 20 : (SPEED === 'balanced' ? 22 : 24);
+      const presetCv = speed === 'quality' ? 'slow' : (speed === 'balanced' ? 'fast' : (speed === 'fast' ? 'veryfast' : (speed === 'turbo' ? 'ultrafast' : 'veryfast')));
+      const crfCv = speed === 'quality' ? 20 : (speed === 'balanced' ? 22 : (speed === 'fast' ? 24 : (speed === 'turbo' ? 28 : 24)));
       ffmpeg(inputPath)
         .videoCodec('libx264')
         .audioCodec('aac')
@@ -698,21 +823,21 @@ router.post('/convert-video', uploadVideo, async (req, res) => {
       await tryReencode();
     }
 
-  // Get file sizes
-  const originalSize = fs.statSync(inputPath).size;
-  const convertedSize = fs.statSync(outputPath).size;
-  const savings = ((originalSize - convertedSize) / originalSize * 100).toFixed(2);
+    // Get file sizes
+    const originalSize = fs.statSync(inputPath).size;
+    const convertedSize = fs.statSync(outputPath).size;
+    const savings = ((originalSize - convertedSize) / originalSize * 100).toFixed(2);
 
-  // Clean up original file (handle Windows EBUSY/EPERM gracefully)
-  try {
-    fs.unlinkSync(inputPath);
-  } catch (err) {
-    if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
-      setTimeout(() => {
-        try { fs.unlinkSync(inputPath); } catch (_) {}
-      }, 500);
+    // Clean up original file (handle Windows EBUSY/EPERM gracefully)
+    try {
+      fs.unlinkSync(inputPath);
+    } catch (err) {
+      if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
+        setTimeout(() => {
+          try { fs.unlinkSync(inputPath); } catch (_) {}
+        }, 500);
+      }
     }
-  }
 
     try { await recordFileProcessed({ size: originalSize, kind: 'converted' }); } catch (_) {}
     try {
@@ -725,14 +850,14 @@ router.post('/convert-video', uploadVideo, async (req, res) => {
       });
     } catch (_) {}
 
-  res.json({
+    res.json({
       success: true,
       message: `Video converted to ${targetFormat.toUpperCase()} successfully`,
-    originalSize,
-    convertedSize,
-    compressedSize: convertedSize,
-    savings,
-    downloadUrl: `/uploads/${path.basename(outputPath)}`
+      originalSize,
+      convertedSize,
+      compressedSize: convertedSize,
+      savings,
+      downloadUrl: `/uploads/${path.basename(outputPath)}`
     });
   } catch (error) {
     console.error('Video conversion error:', error);
@@ -740,108 +865,6 @@ router.post('/convert-video', uploadVideo, async (req, res) => {
   }
 });
 
-// @route   POST /api/tools/convert-audio
-// @desc    Convert audio format
-// @access  Public
-router.post('/convert-audio', uploadAudio, async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No audio file uploaded' });
-    }
-
-    const { targetFormat } = req.body;
-    if (!targetFormat || !['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(targetFormat)) {
-      return res.status(400).json({ error: 'Invalid target format' });
-    }
-
-    // Process audio conversion using FFmpeg (convert only; prioritize quality)
-    const ffmpeg = require('fluent-ffmpeg');
-    const ffmpegPath = require('ffmpeg-static');
-    if (ffmpegPath) {
-      ffmpeg.setFfmpegPath(ffmpegPath);
-    }
-    const path = require('path');
-    const fs = require('fs');
-
-    const inputPath = req.file.path;
-    const outputPath = path.join(path.dirname(inputPath), `converted-${path.parse(req.file.filename).name}.${targetFormat}`);
-
-    // Choose codec based on target format
-    const run = (codecArgs) => new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .outputOptions(codecArgs)
-        .on('end', resolve)
-        .on('error', reject)
-        .save(outputPath);
-    });
-
-    const ext = targetFormat.toLowerCase();
-    let codecArgs = [];
-    if (ext === 'mp3') {
-      // Prefer libmp3lame if available; otherwise return error instructing alternative
-      codecArgs = ['-c:a', 'libmp3lame', '-q:a', '0'];
-      try {
-        await run(codecArgs);
-      } catch (e) {
-        return res.status(400).json({ error: 'MP3 encoding not supported on this server build. Try AAC or OGG.' });
-      }
-    } else if (ext === 'wav') {
-      codecArgs = ['-c:a', 'pcm_s16le'];
-      await run(codecArgs);
-    } else if (ext === 'flac') {
-      codecArgs = ['-c:a', 'flac'];
-      await run(codecArgs);
-    } else if (ext === 'aac' || ext === 'm4a') {
-      codecArgs = ['-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart'];
-      await run(codecArgs);
-    } else if (ext === 'ogg' || ext === 'oga') {
-      codecArgs = ['-c:a', 'libopus', '-b:a', '160k'];
-      await run(codecArgs);
-    } else {
-      return res.status(400).json({ error: 'Unsupported target audio format' });
-    }
-
-  // Get file sizes
-  const originalSize = fs.statSync(inputPath).size;
-  const convertedSize = fs.statSync(outputPath).size;
-  const savings = ((originalSize - convertedSize) / originalSize * 100).toFixed(2);
-
-  // Clean up original file (handle Windows EBUSY/EPERM gracefully)
-  try {
-    fs.unlinkSync(inputPath);
-  } catch (err) {
-    if (err && (err.code === 'EBUSY' || err.code === 'EPERM')) {
-      setTimeout(() => {
-        try { fs.unlinkSync(inputPath); } catch (_) {}
-      }, 500);
-    }
-  }
-
-    try { await recordFileProcessed({ size: originalSize, kind: 'converted' }); } catch (_) {}
-    try {
-      await addActivity({
-        type: 'audio_convert',
-        message: `Audio converted to ${targetFormat.toUpperCase()}: ${path.basename(outputPath)}`,
-        severity: 'info',
-        userId: (req.user && req.user.userId) ? req.user.userId : 'anonymous',
-        meta: { originalSize, convertedSize }
-      });
-    } catch (_) {}
-
-    res.json({
-      success: true,
-      message: `Audio converted to ${targetFormat.toUpperCase()} successfully`,
-    originalSize,
-    convertedSize,
-    compressedSize: convertedSize,
-    savings,
-    downloadUrl: `/uploads/${path.basename(outputPath)}`
-    });
-  } catch (error) {
-    console.error('Audio conversion error:', error);
-    res.status(500).json({ error: 'Error converting audio' });
-  }
-});
 
 // @route   POST /api/tools/convert-pdf
 // @desc    Convert PDF to images (Coming Soon)
