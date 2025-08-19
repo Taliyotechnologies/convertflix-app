@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const auth = require('../middleware/auth');
-const { getUsers, saveUsers } = require('../utils/dataStore');
+const { getUsers, saveUsers, getResetTokens, saveResetTokens } = require('../utils/dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const realtime = require('../utils/realtime');
@@ -29,19 +29,46 @@ function normalizeRole(r) {
   }
 }
 
-// In-memory storage for reset tokens (in production, use database or cache)
-const resetTokens = new Map();
+// Email configuration: use SMTP if provided, else log to console
+function createTransporter() {
+  try {
+    const host = process.env.SMTP_HOST;
+    const port = Number(process.env.SMTP_PORT || 0) || undefined;
+    const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true';
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+    const service = process.env.SMTP_SERVICE; // optional (e.g., 'gmail')
+    if ((!host && !service) || !user || !pass) return null;
+    const options = service
+      ? { service, auth: { user, pass } }
+      : { host, port, secure, auth: { user, pass } };
+    return nodemailer.createTransport(options);
+  } catch (_) {
+    return null;
+  }
+}
 
-// Email configuration (for demo purposes)
-// Note: In production, you would configure a real email service
-// For demo purposes, we'll just log the emails
-const sendEmail = async (to, subject, html) => {
-  console.log('Email would be sent:');
+const transporter = createTransporter();
+
+async function sendEmail(to, subject, html) {
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@convertflix.com',
+        to,
+        subject,
+        html,
+      });
+      return;
+    } catch (e) {
+      console.error('Email send error, falling back to console:', e && e.message ? e.message : e);
+    }
+  }
+  console.log('Email (log fallback):');
   console.log('To:', to);
   console.log('Subject:', subject);
   console.log('Content:', html);
-  return Promise.resolve();
-};
+}
 
 // @route   POST /api/auth/signup
 // @desc    Register a new user
@@ -255,32 +282,30 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Check if user exists (but don't reveal result)
+    // Check if user exists (but don't reveal result); only proceed if exists
+    let exists = false;
     if (useMongo()) {
-      await User.findOne({ email: (email || '').toLowerCase() }).lean();
+      const doc = await User.findOne({ email: (email || '').toLowerCase() }).lean();
+      exists = !!doc;
     } else {
       const list = await getUsers();
-      (list || []).find(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
+      exists = (list || []).some(u => (u.email || '').toLowerCase() === (email || '').toLowerCase());
     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+    if (exists) {
+      // Generate reset token and persist
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const tokens = await getResetTokens();
+      tokens[resetToken] = { email, expiry: resetTokenExpiry.toISOString() };
+      await saveResetTokens(tokens);
 
-    // Store reset token
-    resetTokens.set(resetToken, {
-      email,
-      expiry: resetTokenExpiry
-    });
+      // Build reset URL targeting the Admin Panel
+      const appBase = process.env.ADMIN_PANEL_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+      const resetUrl = `${appBase.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
 
-    // Send email (in production, use proper email service)
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-    
-    const mailOptions = {
-      from: process.env.EMAIL_USER || 'noreply@convertflix.com',
-      to: email,
-      subject: 'Password Reset Request - ConvertFlix',
-      html: `
+      // Send email
+      const html = `
         <h2>Password Reset Request</h2>
         <p>You requested a password reset for your ConvertFlix account.</p>
         <p>Click the link below to reset your password:</p>
@@ -290,13 +315,11 @@ router.post('/forgot-password', async (req, res) => {
         <p>This link will expire in 1 hour.</p>
         <p>If you didn't request this, please ignore this email.</p>
         <p>Best regards,<br>The ConvertFlix Team</p>
-      `
-    };
+      `;
+      await sendEmail(email, 'Password Reset Request - ConvertFlix', html);
+    }
 
-    // For demo purposes, we'll just log the email
-    console.log('Password reset email would be sent to:', email);
-    console.log('Reset URL:', resetUrl);
-
+    // Always return generic response
     res.json({ success: true, message: 'If an account exists, a reset email has been sent' });
   } catch (error) {
     console.error('Forgot password error:', error);
@@ -315,9 +338,10 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Token and password are required' });
     }
 
-    // Check if token exists and is valid
-    const resetData = resetTokens.get(token);
-    if (!resetData || new Date() > resetData.expiry) {
+    // Check if token exists and is valid (from persistent store)
+    const tokens = await getResetTokens();
+    const resetData = tokens[token];
+    if (!resetData || new Date() > new Date(resetData.expiry)) {
       return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
 
@@ -340,8 +364,11 @@ router.post('/reset-password', async (req, res) => {
       await saveUsers(next);
     }
 
-    // Remove used token
-    resetTokens.delete(token);
+    // Remove used token from store
+    try {
+      delete tokens[token];
+      await saveResetTokens(tokens);
+    } catch (_) {}
 
     res.json({ success: true, message: 'Password reset successfully' });
   } catch (error) {

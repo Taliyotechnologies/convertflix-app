@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LayoutDashboard, Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from './Login.module.css';
 
@@ -91,6 +92,11 @@ const Login: React.FC = () => {
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
+          <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+            <Link to="/forgot-password" style={{ color: 'var(--accent-primary)' }}>
+              Forgot password?
+            </Link>
+          </div>
         </form>
 
         <div className={styles.demo}>

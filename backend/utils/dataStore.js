@@ -205,6 +205,34 @@ async function pruneMetricsByDay(days = 14) {
   }
 }
 
+// Reset tokens (for password reset)
+async function getResetTokens() {
+  const tokens = await readJSON('resetTokens', {});
+  const obj = (tokens && typeof tokens === 'object') ? tokens : {};
+  // prune expired tokens
+  const now = Date.now();
+  let changed = false;
+  for (const [tok, data] of Object.entries(obj)) {
+    try {
+      const exp = data && data.expiry ? new Date(data.expiry).getTime() : 0;
+      if (!exp || exp < now) {
+        delete obj[tok];
+        changed = true;
+      }
+    } catch (_) {}
+  }
+  if (changed) {
+    await writeJSON('resetTokens', obj);
+  }
+  return obj;
+}
+
+async function saveResetTokens(tokens) {
+  const toSave = (tokens && typeof tokens === 'object') ? tokens : {};
+  await writeJSON('resetTokens', toSave);
+  return toSave;
+}
+
 module.exports = {
   getUsers,
   saveUsers,
@@ -220,5 +248,8 @@ module.exports = {
   recordFileProcessed,
   defaultMetrics,
   pruneActivities,
-  pruneMetricsByDay
+  pruneMetricsByDay,
+  // reset tokens
+  getResetTokens,
+  saveResetTokens
 };

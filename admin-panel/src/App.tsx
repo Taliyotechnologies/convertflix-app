@@ -8,15 +8,25 @@ import Files from './pages/Files/Files';
 import Settings from './pages/Settings/Settings';
 import Analytics from './pages/Analytics/Analytics';
 import Login from './pages/Login/Login';
+import ForgotPassword from './pages/Auth/ForgotPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import styles from './App.module.css';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
 
-  // If not authenticated, show login page
+  // If not authenticated, show auth routes (login/forgot/reset)
   if (!isAuthenticated) {
-    return <Login />;
+    return (
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
   }
 
   const allowed = user && (user.role === 'admin' || user.role === 'sub-admin');
