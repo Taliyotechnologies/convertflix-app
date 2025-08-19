@@ -1,6 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { getSettings, addActivity } = require('../utils/dataStore');
+const { getSettings, addActivity, getVisitors, saveVisitors } = require('../utils/dataStore');
+let geoip; try { geoip = require('geoip-lite'); } catch (_) { geoip = null; }
+
+function classifyDevice(ua = '') {
+  try {
+    const s = String(ua || '').toLowerCase();
+    const isTablet = /tablet|ipad|playbook|silk|kindle|sm\-t|nexus 7|nexus 10/.test(s);
+    const isMobile = /mobi|iphone|ipod|android(?!.*tablet)|phone/.test(s);
+    if (isTablet) return 'tablet';
+    if (isMobile) return 'phone';
+    return 'laptop'; // treat desktop/laptop together
+  } catch (_) {
+    return 'laptop';
+  }
+}
 
 // @route   GET /api/public/status
 // @desc    Public status endpoint exposing maintenance mode (no auth)
@@ -28,12 +42,25 @@ router.get('/status', async (req, res) => {
 // @access  Public
 router.post('/visit', async (req, res) => {
   try {
-    const { path: pathVisited, referrer, userAgent, source } = req.body || {};
+    const { path: pathVisited, referrer, userAgent, source, deviceId: deviceIdRaw, deviceType: deviceTypeHint } = req.body || {};
     const ua = userAgent || req.headers['user-agent'] || '';
     const ip = (req.headers['x-forwarded-for'] || '')
       .toString()
       .split(',')[0]
       .trim() || req.socket?.remoteAddress || req.ip || '';
+    const deviceType = deviceTypeHint || classifyDevice(ua);
+    let deviceId = '';
+    try {
+      deviceId = String(deviceIdRaw || '').slice(0, 128);
+    } catch (_) { deviceId = ''; }
+
+    let country = '';
+    try {
+      if (geoip && ip) {
+        const look = geoip.lookup(ip);
+        if (look && look.country) country = look.country;
+      }
+    } catch (_) { country = ''; }
 
     const p = pathVisited || '/';
     const msg = `Site visit ${p}${referrer ? ` from ${referrer}` : ''}`;
@@ -47,8 +74,54 @@ router.post('/visit', async (req, res) => {
       referrer: referrer || '',
       ua,
       ip,
-      source: source || 'frontend'
+      source: source || 'frontend',
+      deviceType,
+      country
     });
+
+    // Track deviceId uniqueness and emit a new-device activity on first sight
+    if (deviceId) {
+      try {
+        const visitors = await getVisitors();
+        const nowIso = new Date().toISOString();
+        const entry = visitors[deviceId];
+        if (!entry) {
+          visitors[deviceId] = {
+            firstSeen: nowIso,
+            lastSeen: nowIso,
+            visits: 1,
+            ua,
+            country: country || '',
+            lastIp: ip || '',
+            lastDeviceType: deviceType || ''
+          };
+          await saveVisitors(visitors);
+          await addActivity({
+            type: 'new_device',
+            message: `New device visit (${deviceType || 'unknown'})${country ? ` from ${country}` : ''}`,
+            severity: 'info',
+            ua,
+            ip,
+            path: p,
+            country: country || '',
+            deviceType
+          });
+        } else {
+          visitors[deviceId] = {
+            ...entry,
+            lastSeen: nowIso,
+            visits: (entry.visits || 0) + 1,
+            ua,
+            country: country || entry.country || '',
+            lastIp: ip || entry.lastIp || '',
+            lastDeviceType: deviceType || entry.lastDeviceType || ''
+          };
+          await saveVisitors(visitors);
+        }
+      } catch (e) {
+        // non-fatal
+      }
+    }
 
     // Do not return sensitive data
     res.json({ success: true });

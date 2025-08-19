@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const realtime = require('./realtime');
-const { pruneActivities, pruneMetricsByDay } = require('./dataStore');
+const { pruneActivities, pruneMetricsByDay, pruneVisitors } = require('./dataStore');
 
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 
@@ -15,6 +15,12 @@ async function cleanupOldData(days = 14) {
   } catch (_) {}
   try {
     await pruneMetricsByDay(days);
+  } catch (_) {}
+  try {
+    const res = await pruneVisitors(days);
+    if (res && res.changed) {
+      try { realtime.emit('stats_metrics_updated', { reason: 'visitors_pruned' }); } catch (_) {}
+    }
   } catch (_) {}
 }
 

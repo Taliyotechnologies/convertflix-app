@@ -7,6 +7,8 @@ import {
   Activity as ActivityIcon,
   Database,
   PieChart as PieChartIcon,
+  Eye,
+  Globe,
   CheckCircle,
   AlertTriangle,
   Calendar
@@ -85,6 +87,13 @@ const Analytics: React.FC = () => {
     }
     return res;
   }, [files]);
+
+  // Visitor analytics derived entries
+  const deviceTypeVisitsEntries = useMemo(() => Object.entries(stats.deviceTypeVisits || {}), [stats]);
+  const deviceTypeDevicesEntries = useMemo(() => Object.entries(stats.deviceTypeDevices || {}), [stats]);
+  const countryVisitsEntries = useMemo(() => Object.entries(stats.countryVisits || {}).sort((a,b)=>b[1]-a[1]).slice(0,10), [stats]);
+  const countryDevicesEntries = useMemo(() => Object.entries(stats.countryDevices || {}).sort((a,b)=>b[1]-a[1]).slice(0,10), [stats]);
+  const newDeviceLogs = useMemo(() => logs.filter(l => l.type === 'new_device').slice(0, 8), [logs]);
 
   // Derived: averages
   const averages = useMemo(() => {
@@ -247,6 +256,115 @@ const Analytics: React.FC = () => {
         <p className={styles.subtitle}>Key metrics and recent activity for ConvertFlix</p>
       </div>
 
+      {/* Visitors Analytics */}
+      <div className={styles.chartsRow}>
+        {/* Device Types by Visits */}
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <PieChartIcon size={22} className={styles.cardIcon} />
+            <h3 className={styles.cardTitle}>Device Types (Visits)</h3>
+          </div>
+          <div className={styles.chartWrap}>
+            {deviceTypeVisitsEntries.length === 0 ? (
+              <div className={styles.emptyState}>No visit data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <RPieChart>
+                  <Pie data={deviceTypeVisitsEntries.map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" outerRadius={100}>
+                    {deviceTypeVisitsEntries.map((e, idx) => (
+                      <Cell key={e[0]} fill={[theme.primary, theme.secondary, theme.success, theme.warn, theme.error][idx % 5]} />
+                    ))}
+                  </Pie>
+                  <Legend />
+                </RPieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Device Types by Unique Devices */}
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <PieChartIcon size={22} className={styles.cardIcon} />
+            <h3 className={styles.cardTitle}>Device Types (Devices)</h3>
+          </div>
+          <div className={styles.chartWrap}>
+            {deviceTypeDevicesEntries.length === 0 ? (
+              <div className={styles.emptyState}>No device data available</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <RPieChart>
+                  <Pie data={deviceTypeDevicesEntries.map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" outerRadius={100}>
+                    {deviceTypeDevicesEntries.map((e, idx) => (
+                      <Cell key={e[0]} fill={[theme.success, theme.primary, theme.secondary, theme.warn, theme.error][idx % 5]} />
+                    ))}
+                  </Pie>
+                  <Legend />
+                </RPieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Countries */}
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <Globe size={22} className={styles.cardIcon} />
+            <h3 className={styles.cardTitle}>Visitor Countries</h3>
+          </div>
+          <div className={styles.activityList}>
+            <div className={styles.activityItem}>
+              <strong>Visits</strong>
+            </div>
+            {countryVisitsEntries.map(([cc, n]) => (
+              <div key={`cv-${cc}`} className={styles.activityItem}>
+                <span className={styles.activityMsg}>{cc}</span>
+                <div className={styles.activityMeta}>
+                  <span>{n}</span>
+                </div>
+              </div>
+            ))}
+            <div className={styles.activityItem}>
+              <strong>Devices</strong>
+            </div>
+            {countryDevicesEntries.map(([cc, n]) => (
+              <div key={`cd-${cc}`} className={styles.activityItem}>
+                <span className={styles.activityMsg}>{cc}</span>
+                <div className={styles.activityMeta}>
+                  <span>{n}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Live New Device Alerts */}
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <ActivityIcon size={22} className={styles.cardIcon} />
+            <h3 className={styles.cardTitle}>New Devices (Live)</h3>
+          </div>
+          <div className={styles.activityList}>
+            {newDeviceLogs.length === 0 ? (
+              <div className={styles.emptyState}>No new devices yet</div>
+            ) : (
+              newDeviceLogs.map((log) => (
+                <div key={log.id} className={styles.activityItem}>
+                  <div className={styles.activityLeft}>
+                    <CheckCircle size={16} className={styles.activityOk} />
+                    <span className={styles.activityMsg}>{log.message}</span>
+                  </div>
+                  <div className={styles.activityMeta}>
+                    <Calendar size={14} />
+                    <span>{formatDate(log.timestamp)}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Controls */}
       <div className={styles.controls}>
         <div className={styles.controlGroup}>
@@ -331,7 +449,29 @@ const Analytics: React.FC = () => {
           <div className={styles.kpiValue}>{formatFileSize(stats.totalStorage)}</div>
         </div>
 
-        
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiHeader}>
+            <Eye size={22} className={styles.kpiIcon} />
+            <span className={styles.kpiLabel}>Total Visits</span>
+          </div>
+          <div className={styles.kpiValue}>{(stats.totalVisits || 0).toLocaleString()}</div>
+        </div>
+
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiHeader}>
+            <PieChartIcon size={22} className={styles.kpiIcon} />
+            <span className={styles.kpiLabel}>Unique Devices</span>
+          </div>
+          <div className={styles.kpiValue}>{(stats.uniqueDevices || 0).toLocaleString()}</div>
+        </div>
+
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiHeader}>
+            <ActivityIcon size={22} className={styles.kpiIcon} />
+            <span className={styles.kpiLabel}>New Devices Today</span>
+          </div>
+          <div className={styles.kpiValue}>{(stats.newDevicesToday || 0).toLocaleString()}</div>
+        </div>
       </div>
 
       {/* Charts Row */}

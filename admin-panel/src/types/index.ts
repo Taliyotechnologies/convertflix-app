@@ -32,6 +32,14 @@ export interface DashboardStats {
   averageFileSize: number;
   activeUsers: number;
   totalVisits: number;
+  // visit analytics (from activities)
+  deviceTypeVisits?: Record<string, number>;
+  countryVisits?: Record<string, number>;
+  // device analytics (from unique visitors store)
+  uniqueDevices?: number;
+  deviceTypeDevices?: Record<string, number>;
+  countryDevices?: Record<string, number>;
+  newDevicesToday?: number;
 }
 
 export interface AdminSettings {
@@ -46,7 +54,7 @@ export interface AdminSettings {
 
 export interface ActivityLog {
   id: string;
-  type: 'file_upload' | 'user_registration' | 'file_conversion' | 'user_login' | 'site_visit' | 'error';
+  type: 'file_upload' | 'user_registration' | 'file_conversion' | 'user_login' | 'site_visit' | 'new_device' | 'error';
   message: string;
   timestamp: string;
   userId: string;

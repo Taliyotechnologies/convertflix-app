@@ -187,11 +187,18 @@ export const publicAPI = {
   getStatus: async (): Promise<{ maintenanceMode: boolean; siteName?: string }> => {
     return apiRequest('/public/status');
   },
-  trackVisit: async (path: string, referrer?: string, userAgent?: string, source?: string): Promise<void> => {
+  trackVisit: async (
+    path: string,
+    referrer?: string,
+    userAgent?: string,
+    source?: string,
+    deviceId?: string,
+    deviceType?: 'phone' | 'tablet' | 'laptop'
+  ): Promise<void> => {
     try {
       await apiRequest('/public/visit', {
         method: 'POST',
-        body: JSON.stringify({ path, referrer, userAgent, source: source || 'frontend' }),
+        body: JSON.stringify({ path, referrer, userAgent, source: source || 'frontend', deviceId, deviceType }),
       });
     } catch (_) {
       // swallow errors; visit tracking should not break the UX

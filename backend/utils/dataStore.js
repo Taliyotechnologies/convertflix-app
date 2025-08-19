@@ -96,10 +96,10 @@ async function addActivity(activity) {
       realtime.emit('activity', extended);
     }
   } catch (_) {}
-  // Notify stats listeners when visits are recorded so dashboards update immediately
+  // Notify stats listeners when visits or devices are recorded so dashboards update immediately
   try {
-    if (extended && extended.type === 'site_visit') {
-      realtime.emit('stats_metrics_updated', { reason: 'site_visit' });
+    if (extended && (extended.type === 'site_visit' || extended.type === 'new_device')) {
+      realtime.emit('stats_metrics_updated', { reason: extended.type });
     }
   } catch (_) {}
   return extended;
@@ -246,6 +246,45 @@ async function saveResetTokens(tokens) {
   return toSave;
 }
 
+// Visitors (deviceId-based unique devices)
+// Shape: { [deviceId: string]: { firstSeen: string, lastSeen: string, visits: number, ua?: string, country?: string, lastIp?: string, lastDeviceType?: string } }
+async function getVisitors() {
+  const obj = await readJSON('visitors', {});
+  return (obj && typeof obj === 'object') ? obj : {};
+}
+
+async function saveVisitors(map) {
+  const toSave = (map && typeof map === 'object') ? map : {};
+  await writeJSON('visitors', toSave);
+  return toSave;
+}
+
+// Remove visitors whose lastSeen is older than N days
+async function pruneVisitors(days = 7) {
+  try {
+    const map = await getVisitors();
+    const now = Date.now();
+    const cutoff = now - days * 24 * 60 * 60 * 1000;
+    let changed = false;
+    for (const [id, v] of Object.entries(map)) {
+      try {
+        const last = v && v.lastSeen ? new Date(v.lastSeen).getTime() : 0;
+        if (!last || last < cutoff) {
+          delete map[id];
+          changed = true;
+        }
+      } catch (_) {
+        delete map[id];
+        changed = true;
+      }
+    }
+    if (changed) await saveVisitors(map);
+    return { changed };
+  } catch (e) {
+    return { changed: false };
+  }
+}
+
 module.exports = {
   getUsers,
   saveUsers,
@@ -264,5 +303,9 @@ module.exports = {
   pruneMetricsByDay,
   // reset tokens
   getResetTokens,
-  saveResetTokens
+  saveResetTokens,
+  // visitors
+  getVisitors,
+  saveVisitors,
+  pruneVisitors
 };
