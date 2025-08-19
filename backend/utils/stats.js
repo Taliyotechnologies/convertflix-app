@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { getUsers, getMetrics } = require('./dataStore');
+const { getUsers, getMetrics, getActivities } = require('./dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const useMongo = () => {
@@ -50,6 +50,20 @@ async function computeStats() {
     }).length;
   }
 
+  // Unique visits computed from activities (unique ip+ua across retained history)
+  let totalVisits = 0;
+  try {
+    const activities = await getActivities();
+    const uniq = new Set(
+      (activities || [])
+        .filter(a => a && a.type === 'site_visit')
+        .map(a => `${a.ip || ''}|${a.ua || ''}`)
+    );
+    totalVisits = uniq.size;
+  } catch (_) {
+    totalVisits = 0;
+  }
+
   return {
     totalUsers,
     totalFiles,
@@ -58,6 +72,7 @@ async function computeStats() {
     conversionRate: Math.round(conversionRate * 100) / 100,
     averageFileSize,
     activeUsers,
+    totalVisits,
   };
 }
 

@@ -6,16 +6,23 @@ const VisitTracker = () => {
   const location = useLocation();
 
   useEffect(() => {
+    // Only count a new visit once per browser session
     try {
-      const path = `${location.pathname}${location.search}${location.hash}`;
-      const referrer = typeof document !== 'undefined' ? document.referrer : '';
-      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-      // Fire and forget; errors are swallowed in API layer
-      publicAPI.trackVisit(path, referrer, ua, 'frontend');
+      const key = 'visitTracked';
+      const already = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(key) : '1';
+      if (!already) {
+        const path = `${location.pathname}${location.search}${location.hash}`;
+        const referrer = typeof document !== 'undefined' ? document.referrer : '';
+        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        publicAPI.trackVisit(path, referrer, ua, 'frontend');
+        try { sessionStorage.setItem(key, '1'); } catch {}
+      }
     } catch {
       // no-op
     }
-  }, [location.pathname, location.search, location.hash]);
+    // run only on first mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 };

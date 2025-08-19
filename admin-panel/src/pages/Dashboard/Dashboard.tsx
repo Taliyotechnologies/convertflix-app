@@ -6,7 +6,8 @@ import {
   Activity,
   Clock,
   BarChart3,
-  AlertTriangle
+  AlertTriangle,
+  Eye
 } from 'lucide-react';
 import { getStats, getActivity, getFiles, getUsers, deleteFile } from '../../services/api';
 import { subscribeSSE, isSSEEnabled } from '../../services/realtime';
@@ -15,22 +16,36 @@ import { formatFileSize, formatPercentage, formatRelativeTime } from '../../util
 import styles from './Dashboard.module.css';
 
 const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    totalFiles: 0,
-    totalStorage: 0,
-    filesProcessedToday: 0,
-    conversionRate: 0,
-    averageFileSize: 0,
-    activeUsers: 0,
+  const [stats, setStats] = useState<DashboardStats>(() => {
+    // Seed from last known stats to avoid 0 flicker
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('admin.dashboardStats') : null;
+      if (raw) return JSON.parse(raw) as DashboardStats;
+    } catch {}
+    return {
+      totalUsers: 0,
+      totalFiles: 0,
+      totalStorage: 0,
+      filesProcessedToday: 0,
+      conversionRate: 0,
+      averageFileSize: 0,
+      activeUsers: 0,
+      totalVisits: 0,
+    } as DashboardStats;
+  });
+  const [hydrated, setHydrated] = useState<boolean>(() => {
+    try {
+      return Boolean(typeof window !== 'undefined' && localStorage.getItem('admin.dashboardStats'));
+    } catch {
+      return false;
+    }
   });
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // If SSE is enabled, the initial snapshots will come via the stream; skip duplicate fetches
-    if (isSSEEnabled()) return;
+    // Always perform an initial fetch to hydrate instantly (even if SSE is enabled)
     let alive = true;
     (async () => {
       try {
@@ -41,7 +56,11 @@ const Dashboard: React.FC = () => {
           getUsers({ limit: 5 }).catch(() => []),
         ]);
         if (!alive) return;
-        if (s) setStats(s);
+        if (s) {
+          setStats(s);
+          try { localStorage.setItem('admin.dashboardStats', JSON.stringify(s)); } catch {}
+          setHydrated(true);
+        }
         setActivities(a || []);
         if (Array.isArray(f)) setFiles(f);
         if (Array.isArray(u)) setUsers(u);
@@ -53,7 +72,11 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!isSSEEnabled()) return;
     const unsub = subscribeSSE({
-      onStats: (s) => setStats(s),
+      onStats: (s) => {
+        setStats(s);
+        try { localStorage.setItem('admin.dashboardStats', JSON.stringify(s)); } catch {}
+        setHydrated(true);
+      },
       onActivity: (log) => setActivities(prev => [log, ...prev].slice(0, 20)),
       onActivitiesReplace: (list) => setActivities(list.slice(0, 20)),
       onFilesReplace: (list) => setFiles(list.slice(0, 10)),
@@ -95,6 +118,8 @@ const Dashboard: React.FC = () => {
         return <BarChart3 size={16} />;
       case 'user_login':
         return <Activity size={16} />;
+      case 'site_visit':
+        return <Eye size={16} />;
       case 'error':
         return <AlertTriangle size={16} />;
       default:
@@ -118,7 +143,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div className={styles.statContent}>
             <p className={styles.statTitle}>Total Users</p>
-            <h3 className={styles.statValue}>{stats.totalUsers.toLocaleString()}</h3>
+            <h3 className={styles.statValue}>{hydrated ? stats.totalUsers.toLocaleString() : '—'}</h3>
           </div>
         </div>
 
@@ -128,7 +153,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div className={styles.statContent}>
             <p className={styles.statTitle}>Total Files</p>
-            <h3 className={styles.statValue}>{stats.totalFiles.toLocaleString()}</h3>
+            <h3 className={styles.statValue}>{hydrated ? stats.totalFiles.toLocaleString() : '—'}</h3>
           </div>
         </div>
 
@@ -138,7 +163,7 @@ const Dashboard: React.FC = () => {
           </div>
           <div className={styles.statContent}>
             <p className={styles.statTitle}>Storage Used</p>
-            <h3 className={styles.statValue}>{formatFileSize(stats.totalStorage)}</h3>
+            <h3 className={styles.statValue}>{hydrated ? formatFileSize(stats.totalStorage) : '—'}</h3>
           </div>
         </div>
 
@@ -148,7 +173,17 @@ const Dashboard: React.FC = () => {
           </div>
           <div className={styles.statContent}>
             <p className={styles.statTitle}>Active Users (7d)</p>
-            <h3 className={styles.statValue}>{stats.activeUsers.toLocaleString()}</h3>
+            <h3 className={styles.statValue}>{hydrated ? stats.activeUsers.toLocaleString() : '—'}</h3>
+          </div>
+        </div>
+
+        <div className={styles.statCard}>
+          <div className={styles.statIcon}>
+            <Eye size={24} />
+          </div>
+          <div className={styles.statContent}>
+            <p className={styles.statTitle}>Total Visits</p>
+            <h3 className={styles.statValue}>{hydrated ? (stats.totalVisits || 0).toLocaleString() : '—'}</h3>
           </div>
         </div>
       </div>

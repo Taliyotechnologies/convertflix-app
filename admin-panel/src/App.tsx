@@ -22,7 +22,7 @@ const AppContent: React.FC = () => {
       <div className={`${styles.app} ${styles.centered}`}>
         <div style={{ padding: '2rem' }}>Loading...</div>
       </div>
-    );
+    );  
   }
 
   // If not authenticated, show auth routes (login/forgot/reset)

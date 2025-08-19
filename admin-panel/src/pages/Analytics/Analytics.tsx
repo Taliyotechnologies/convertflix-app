@@ -47,6 +47,7 @@ const Analytics: React.FC = () => {
     conversionRate: 0,
     averageFileSize: 0,
     activeUsers: 0,
+    totalVisits: 0,
   }));
 
   // Filters

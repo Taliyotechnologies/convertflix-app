@@ -31,6 +31,7 @@ export interface DashboardStats {
   conversionRate: number;
   averageFileSize: number;
   activeUsers: number;
+  totalVisits: number;
 }
 
 export interface AdminSettings {
@@ -45,7 +46,7 @@ export interface AdminSettings {
 
 export interface ActivityLog {
   id: string;
-  type: 'file_upload' | 'user_registration' | 'file_conversion' | 'user_login' | 'error';
+  type: 'file_upload' | 'user_registration' | 'file_conversion' | 'user_login' | 'site_visit' | 'error';
   message: string;
   timestamp: string;
   userId: string;

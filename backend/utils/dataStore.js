@@ -96,6 +96,12 @@ async function addActivity(activity) {
       realtime.emit('activity', extended);
     }
   } catch (_) {}
+  // Notify stats listeners when visits are recorded so dashboards update immediately
+  try {
+    if (extended && extended.type === 'site_visit') {
+      realtime.emit('stats_metrics_updated', { reason: 'site_visit' });
+    }
+  } catch (_) {}
   return extended;
 }
 
