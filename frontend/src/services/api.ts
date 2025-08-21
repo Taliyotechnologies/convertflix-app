@@ -203,6 +203,17 @@ export const publicAPI = {
   getStatus: async (): Promise<{ maintenanceMode: boolean; siteName?: string }> => {
     return apiRequest('/public/status');
   },
+  submitContact: async (
+    name: string,
+    email: string,
+    subject: string,
+    message: string
+  ): Promise<{ success: boolean; id?: string }> => {
+    return apiRequest('/public/contact', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, subject, message }),
+    });
+  },
   trackVisit: async (
     path: string,
     referrer?: string,

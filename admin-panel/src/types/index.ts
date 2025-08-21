@@ -60,3 +60,17 @@ export interface ActivityLog {
   userId: string;
   severity: 'info' | 'warning' | 'error';
 }
+
+// Contact messages submitted from the public site
+export interface ContactMessage {
+  id: string;
+  createdAt: string;
+  updatedAt?: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'read' | 'resolved';
+  read: boolean;
+  resolved: boolean;
+}

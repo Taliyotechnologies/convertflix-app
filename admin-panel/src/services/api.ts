@@ -1,4 +1,4 @@
-import type { DashboardStats, FileRecord, ActivityLog, User, AdminSettings } from '../types';
+import type { DashboardStats, FileRecord, ActivityLog, User, AdminSettings, ContactMessage } from '../types';
 
 const BASE: string = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
@@ -111,4 +111,25 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 export async function resetUserPassword(id: string): Promise<{ success: boolean; tempPassword?: string }> {
   return request<{ success: boolean; tempPassword?: string }>(`/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST' });
+}
+
+// Contacts (Admin)
+export async function getContacts(params?: { status?: 'new' | 'read' | 'resolved'; q?: string; limit?: number }): Promise<ContactMessage[]> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set('status', params.status);
+  if (params?.q) qs.set('q', params.q);
+  if (params?.limit) qs.set('limit', String(params.limit));
+  const path = '/admin/contacts' + (qs.toString() ? `?${qs.toString()}` : '');
+  return request<ContactMessage[]>(path);
+}
+
+export async function updateContact(
+  id: string,
+  patch: Partial<Pick<ContactMessage, 'status' | 'read' | 'resolved' | 'subject' | 'message'>>
+): Promise<ContactMessage> {
+  return request<ContactMessage>(`/admin/contacts/${encodeURIComponent(id)}` ,{
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
 }

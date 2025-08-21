@@ -12,6 +12,7 @@ import ForgotPassword from './pages/Auth/ForgotPassword.tsx';
 import ResetPassword from './pages/Auth/ResetPassword.tsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import styles from './App.module.css';
+import Contacts from './pages/Contacts/Contacts';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, user, loading, logout } = useAuth();
@@ -73,6 +74,7 @@ const AppContent: React.FC = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/users" element={<Users />} />
+            <Route path="/contacts" element={<Contacts />} />
             <Route path="/files" element={<Files />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

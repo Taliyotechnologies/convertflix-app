@@ -150,6 +150,18 @@
   font-size: 1.2rem;
 }
 
+.errorMessage {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--accent-error);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  margin-top: 1rem;
+}
+
 /* Info Section */
 .infoSection {
   display: flex;

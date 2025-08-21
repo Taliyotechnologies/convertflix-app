@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const auth = require('../middleware/auth');
-const { getUsers, getSettings, saveSettings, getActivities } = require('../utils/dataStore');
+const { getUsers, getSettings, saveSettings, getActivities, getContacts, updateContact } = require('../utils/dataStore');
 const realtime = require('../utils/realtime');
 const { computeStats } = require('../utils/stats');
 const { listFiles } = require('../utils/files');
@@ -92,10 +92,11 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
     const settings = await getSettings().catch(() => ({}));
     const notificationsEnabled = ((settings && typeof settings.adminNotifications !== 'boolean') || settings.adminNotifications);
     const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
-    const [stats, activities, files] = await Promise.all([
+    const [stats, activities, files, contacts] = await Promise.all([
       computeStats().catch(() => null),
       getActivities().catch(() => []),
-      Promise.resolve(listFiles(500, retentionDays)).catch(() => [])
+      Promise.resolve(listFiles(500, retentionDays)).catch(() => []),
+      getContacts().catch(() => [])
     ]);
     if (stats) send('stats', stats);
     if (notificationsEnabled && Array.isArray(activities)) {
@@ -103,6 +104,10 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
       send('activities', ordered);
     }
     if (Array.isArray(files)) send('files', files);
+    if (Array.isArray(contacts)) {
+      const orderedContacts = contacts.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 200);
+      send('contacts', orderedContacts);
+    }
     // Initial latest users snapshot (top 50 newest)
     try {
       let latestUsers = [];
@@ -222,6 +227,20 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
   };
   realtime.on('files_updated', onFilesUpdated);
 
+  // Live contacts -> send single upsert and/or refreshed list
+  const onContact = (c) => {
+    try { send('contact', c); } catch (_) {}
+  };
+  const onContactsUpdated = async () => {
+    try {
+      const list = await getContacts().catch(() => []);
+      const ordered = (list || []).slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 200);
+      send('contacts', ordered);
+    } catch (_) {}
+  };
+  realtime.on('contact', onContact);
+  realtime.on('contacts_updated', onContactsUpdated);
+
   // Live users -> send latest list
   const onUsersUpdated = async () => {
     try {
@@ -268,6 +287,8 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
     }
     try { realtime.off ? realtime.off('stats_metrics_updated', onMetrics) : realtime.removeListener('stats_metrics_updated', onMetrics); } catch (_) {}
     try { realtime.off ? realtime.off('files_updated', onFilesUpdated) : realtime.removeListener('files_updated', onFilesUpdated); } catch (_) {}
+    try { realtime.off ? realtime.off('contact', onContact) : realtime.removeListener('contact', onContact); } catch (_) {}
+    try { realtime.off ? realtime.off('contacts_updated', onContactsUpdated) : realtime.removeListener('contacts_updated', onContactsUpdated); } catch (_) {}
     try { realtime.off ? realtime.off('users_updated', onUsersUpdated) : realtime.removeListener('users_updated', onUsersUpdated); } catch (_) {}
     try { res.end(); } catch (_) {}
   });
@@ -432,6 +453,55 @@ router.delete('/files/:id', auth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Delete file error:', error);
     res.status(500).json({ error: 'Server error deleting file' });
+  }
+});
+
+// @route   GET /api/admin/contacts
+// @desc    List contact messages
+// @access  Private (Admin)
+router.get('/contacts', auth, requireAdmin, async (req, res) => {
+  try {
+    const { status, q, limit } = req.query;
+    let list = await getContacts();
+
+    if (status) {
+      const st = String(status);
+      list = list.filter(c => (c.status || 'new') === st);
+    }
+    if (q) {
+      const ql = String(q).toLowerCase();
+      list = list.filter(c =>
+        (c.name || '').toLowerCase().includes(ql) ||
+        (c.email || '').toLowerCase().includes(ql) ||
+        (c.subject || '').toLowerCase().includes(ql) ||
+        (c.message || '').toLowerCase().includes(ql)
+      );
+    }
+
+    list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const lim = limit ? parseInt(limit) : undefined;
+    const result = (typeof lim === 'number' && !Number.isNaN(lim)) ? list.slice(0, lim) : list;
+    res.json(result);
+  } catch (error) {
+    console.error('Get admin contacts error:', error);
+    res.status(500).json({ error: 'Server error getting admin contacts' });
+  }
+});
+
+// @route   PATCH /api/admin/contacts/:id
+// @desc    Update a contact message fields (status/read/resolved/subject/message)
+// @access  Private (Admin)
+router.patch('/contacts/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const patch = req.body || {};
+    const updated = await updateContact(id, patch);
+    res.json(updated);
+  } catch (error) {
+    const msg = (error && error.message) ? error.message : 'Server error updating contact';
+    const code = msg.includes('not found') ? 404 : 500;
+    console.error('Update admin contact error:', error);
+    res.status(code).json({ error: msg });
   }
 });
 

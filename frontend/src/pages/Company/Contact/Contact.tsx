@@ -6,9 +6,11 @@ import {
   Clock, 
   MessageCircle, 
   Smartphone, 
-  BookOpen
+  BookOpen,
+  AlertCircle
 } from 'lucide-react';
 import styles from './Contact.module.css';
+import { publicAPI } from '../../../services/api';
 
 const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -30,14 +32,23 @@ const Contact: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setSubmitStatus('idle');
     setIsSubmitting(true);
-    
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      await publicAPI.submitContact(
+        formData.name,
+        formData.email,
+        formData.subject,
+        formData.message
+      );
       setSubmitStatus('success');
-      setIsSubmitting(false);
       setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 2000);
+    } catch (_) {
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -127,6 +138,12 @@ const Contact: React.FC = () => {
                 <div className={styles.successMessage}>
                   <CheckCircle size={20} />
                   Thank you! Your message has been sent successfully. We'll get back to you within 24 hours.
+                </div>
+              )}
+              {submitStatus === 'error' && (
+                <div className={styles.errorMessage}>
+                  <AlertCircle size={20} />
+                  Sorry, we couldn't send your message. Please try again later.
                 </div>
               )}
             </form>

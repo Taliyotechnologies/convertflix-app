@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getSettings, addActivity, getVisitors, saveVisitors } = require('../utils/dataStore');
+const { getSettings, addActivity, getVisitors, saveVisitors, addContact } = require('../utils/dataStore');
 let geoip; try { geoip = require('geoip-lite'); } catch (_) { geoip = null; }
 
 function classifyDevice(ua = '') {
@@ -128,6 +128,21 @@ router.post('/visit', async (req, res) => {
   } catch (error) {
     console.error('Track visit error:', error);
     res.status(500).json({ error: 'Failed to track visit' });
+  }
+});
+
+// @route   POST /api/public/contact
+// @desc    Submit a contact message
+// @access  Public
+router.post('/contact', async (req, res) => {
+  try {
+    const { name, email, subject, message } = req.body || {};
+    const rec = await addContact({ name, email, subject, message });
+    res.json({ success: true, id: rec.id });
+  } catch (error) {
+    const msg = (error && error.message) ? error.message : 'Failed to submit contact message';
+    const code = msg.includes('Missing required fields') ? 400 : 500;
+    res.status(code).json({ error: msg });
   }
 });
 

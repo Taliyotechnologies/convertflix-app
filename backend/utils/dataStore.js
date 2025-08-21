@@ -295,6 +295,71 @@ async function pruneVisitors(days = 7) {
   }
 }
 
+// Contacts (messages submitted from the public site)
+async function getContacts() {
+  const list = await readJSON('contacts', []);
+  return Array.isArray(list) ? list : [];
+}
+
+async function saveContacts(list) {
+  await writeJSON('contacts', Array.isArray(list) ? list : []);
+  return Array.isArray(list) ? list : [];
+}
+
+function clampString(v, max = 2000) {
+  try {
+    const s = String(v || '').trim();
+    return s.length > max ? s.slice(0, max) : s;
+  } catch (_) {
+    return '';
+  }
+}
+
+async function addContact({ name, email, subject, message }) {
+  const nm = clampString(name, 200);
+  const em = clampString(email, 300);
+  const sj = clampString(subject, 200);
+  const msg = clampString(message, 5000);
+  if (!nm || !em || !sj || !msg) throw new Error('Missing required fields');
+
+  const contacts = await getContacts();
+  const rec = {
+    id: Date.now().toString(),
+    createdAt: new Date().toISOString(),
+    name: nm,
+    email: em,
+    subject: sj,
+    message: msg,
+    status: 'new',
+    read: false,
+    resolved: false
+  };
+  contacts.unshift(rec);
+  await saveContacts(contacts);
+
+  try { realtime.emit('contact', rec); } catch (_) {}
+  try { realtime.emit('contacts_updated', { reason: 'new' }); } catch (_) {}
+  return rec;
+}
+
+async function updateContact(id, patch = {}) {
+  const contacts = await getContacts();
+  const idx = contacts.findIndex(c => c && c.id === id);
+  if (idx === -1) throw new Error('Contact not found');
+  const prev = contacts[idx];
+  const allowed = {};
+  if (typeof patch.status === 'string') allowed.status = ['new', 'read', 'resolved'].includes(patch.status) ? patch.status : prev.status;
+  if (typeof patch.read === 'boolean') allowed.read = patch.read;
+  if (typeof patch.resolved === 'boolean') allowed.resolved = patch.resolved;
+  if (typeof patch.subject === 'string') allowed.subject = clampString(patch.subject, 200);
+  if (typeof patch.message === 'string') allowed.message = clampString(patch.message, 5000);
+  contacts[idx] = { ...prev, ...allowed, updatedAt: new Date().toISOString() };
+  await saveContacts(contacts);
+  try { realtime.emit('contacts_updated', { reason: 'update', id }); } catch (_) {}
+  try { realtime.emit('contact', contacts[idx]); } catch (_) {}
+  return contacts[idx];
+}
+
 module.exports = {
   getUsers,
   saveUsers,
@@ -317,5 +382,10 @@ module.exports = {
   // visitors
   getVisitors,
   saveVisitors,
-  pruneVisitors
+  pruneVisitors,
+  // contacts
+  getContacts,
+  saveContacts,
+  addContact,
+  updateContact
 };

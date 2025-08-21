@@ -6,6 +6,7 @@ import {
   FileText, 
   Settings, 
   BarChart3,
+  Mail,
   LogOut,
   Menu,
   X
@@ -22,6 +23,7 @@ const Sidebar: React.FC = () => {
     { path: '/dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { path: '/analytics', name: 'Analytics', icon: BarChart3 },
     { path: '/users', name: 'Users', icon: Users },
+    { path: '/contacts', name: 'Contacts', icon: Mail },
     { path: '/files', name: 'Files', icon: FileText },
     { path: '/settings', name: 'Settings', icon: Settings },
   ];
