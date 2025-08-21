@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Search, User as UserIcon, Mail, Calendar, Activity, Plus, Trash2, Key } from 'lucide-react';
+import { Search, Mail, Calendar, Activity, Plus, Trash2, Key } from 'lucide-react';
 import { getUsers, createUser, deleteUser, resetUserPassword } from '../../services/api';
 import type { User } from '../../types';
 import { formatDate } from '../../utils/format';
+import { generateAvatar } from '../../utils/avatar';
 import styles from './Users.module.css';
 
 const Users: React.FC = () => {
@@ -148,13 +149,7 @@ const Users: React.FC = () => {
               <tr key={user.id} className={styles.tableRow}>
                 <td>
                   <div className={styles.userCell}>
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.name} className={styles.avatar} />
-                    ) : (
-                      <div className={styles.avatar} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-2)' }}>
-                        <UserIcon size={16} />
-                      </div>
-                    )}
+                    <img src={user.avatar || generateAvatar(user.name)} alt={user.name} className={styles.avatar} />
                     <span className={styles.userName}>{user.name}</span>
                   </div>
                 </td>

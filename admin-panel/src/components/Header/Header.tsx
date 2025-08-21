@@ -13,6 +13,7 @@ import { subscribeSSE } from '../../services/realtime';
 import { getAdminSettings } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import styles from './Header.module.css';
+import { generateAvatar } from '../../utils/avatar';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -126,7 +127,7 @@ const Header: React.FC = () => {
               onClick={() => setShowDropdown(!showDropdown)}
             >
               <img 
-                src={user?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'} 
+                src={user?.avatar || generateAvatar(user?.name)} 
                 alt="Profile" 
                 className={styles.avatar}
               />

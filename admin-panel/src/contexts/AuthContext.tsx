@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '../types';
+import { generateAvatar } from '../utils/avatar';
 
 interface AuthContextType {
   user: User | null;
@@ -57,7 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                   createdAt: new Date().toISOString(),
                   lastLogin: new Date().toISOString(),
                   status: 'active',
-                  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
+                  avatar: data.user.avatar || generateAvatar(data.user.fullName || 'Admin User')
                 };
                 localStorage.setItem('adminUser', JSON.stringify(verifiedUser));
                 if (!cancelled) {
@@ -79,7 +80,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 try {
                   const parsedUser = JSON.parse(userData);
                   if (!cancelled) {
-                    setUser(parsedUser);
+                    const ensured = parsedUser?.avatar ? parsedUser : { ...parsedUser, avatar: generateAvatar(parsedUser?.name) };
+                    setUser(ensured);
                     setIsAuthenticated(true);
                   }
                 } catch {}
@@ -90,7 +92,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             try {
               const parsedUser = JSON.parse(userData);
               if (!cancelled) {
-                setUser(parsedUser);
+                const ensured = parsedUser?.avatar ? parsedUser : { ...parsedUser, avatar: generateAvatar(parsedUser?.name) };
+                setUser(ensured);
                 setIsAuthenticated(true);
               }
             } catch {}
@@ -122,7 +125,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           try {
             const parsed = JSON.parse(u);
-            setUser(parsed);
+            const ensured = parsed?.avatar ? parsed : { ...parsed, avatar: generateAvatar(parsed?.name) };
+            setUser(ensured);
             setIsAuthenticated(true);
           } catch {
             setUser(null);
@@ -161,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           createdAt: data.user.createdAt || '2024-01-01T00:00:00Z',
           lastLogin: new Date().toISOString(),
           status: 'active',
-          avatar: data.user.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
+          avatar: data.user.avatar || generateAvatar(data.user.fullName || 'Admin User')
         };
         
         localStorage.setItem('adminToken', data.token);
