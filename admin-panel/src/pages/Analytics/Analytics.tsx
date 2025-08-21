@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BarChart3,
   RefreshCw,
@@ -14,7 +14,7 @@ import {
   AlertTriangle,
   Calendar
 } from 'lucide-react';
-import { getStats, getFiles, getActivity } from '../../services/api';
+import { getStats, getFiles, getActivity, getAdminSettings } from '../../services/api';
 import { subscribeSSE, isSSEEnabled } from '../../services/realtime';
 import { formatFileSize, formatPercentage, formatDate } from '../../utils/format';
 import type { FileRecord, ActivityLog, DashboardStats } from '../../types';
@@ -40,21 +40,50 @@ type StatusKey = 'all' | 'completed' | 'processing';
 type TypeKey = 'all' | 'image' | 'video' | 'audio' | 'pdf' | 'document';
 type TabKey = 'overview' | 'visitors' | 'conversions' | 'activity';
 
+// Lightweight cache to avoid KPI flicker on refresh (esp. totalVisits)
+const STATS_CACHE_KEY = 'analytics_stats_cache_v1';
+const STATS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours TTL
+
+function readCachedStats(): DashboardStats | null {
+  try {
+    const raw = localStorage.getItem(STATS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { ts: number; stats: DashboardStats };
+    if (!parsed || typeof parsed.ts !== 'number' || !parsed.stats) return null;
+    if (Date.now() - parsed.ts > STATS_CACHE_TTL_MS) return null;
+    return parsed.stats as DashboardStats;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedStats(stats: DashboardStats) {
+  try {
+    const payload = { ts: Date.now(), stats };
+    localStorage.setItem(STATS_CACHE_KEY, JSON.stringify(payload));
+  } catch {}
+}
+
 const Analytics: React.FC = () => {
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [stats, setStats] = useState<DashboardStats>(() => ({
-    totalUsers: 0,
-    totalFiles: 0,
-    totalStorage: 0,
-    filesProcessedToday: 0,
-    conversionRate: 0,
-    averageFileSize: 0,
-    activeUsers: 0,
-    totalVisits: 0,
-  }));
+  const [stats, setStats] = useState<DashboardStats>(() => {
+    const cached = readCachedStats();
+    if (cached) return cached;
+    return {
+      totalUsers: 0,
+      totalFiles: 0,
+      totalStorage: 0,
+      filesProcessedToday: 0,
+      conversionRate: 0,
+      averageFileSize: 0,
+      activeUsers: 0,
+      totalVisits: 0,
+    } as DashboardStats;
+  });
   const [newVisitCount, setNewVisitCount] = useState(0);
   const [showNewVisit, setShowNewVisit] = useState(false);
+  const [retentionDays, setRetentionDays] = useState<number>(7);
 
   const [tab, setTab] = useState<TabKey>('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -67,7 +96,6 @@ const Analytics: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusKey>('all');
   const [typeFilter, setTypeFilter] = useState<TypeKey>('all');
 
-  // Persist filters and selected tab for analysts
   useEffect(() => {
     try {
       const t = (localStorage.getItem('analytics_tab') as TabKey | null);
@@ -92,6 +120,13 @@ const Analytics: React.FC = () => {
       localStorage.setItem('analytics_type', typeFilter);
     } catch {}
   }, [tab, range, severity, statusFilter, typeFilter]);
+
+  // Persist latest stats snapshot to cache once we have a timestamped update
+  useEffect(() => {
+    try {
+      if (lastUpdated) writeCachedStats(stats);
+    } catch {}
+  }, [stats, lastUpdated]);
 
   const rangeStart = useMemo(() => {
     const now = new Date();
@@ -165,15 +200,19 @@ const Analytics: React.FC = () => {
     let alive = true;
     (async () => {
       try {
-        const [s, f, a] = await Promise.all([
+        const [s, f, a, settings] = await Promise.all([
           getStats().catch(() => null),
           getFiles(500).catch(() => []),
           getActivity({ limit: 200 }).catch(() => []),
+          getAdminSettings().catch(() => null),
         ]);
         if (!alive) return;
         if (s) setStats(s);
         setFiles(f || []);
         setLogs(a || []);
+        if (settings && typeof (settings as any).autoDeleteDays === 'number') {
+          setRetentionDays((settings as any).autoDeleteDays || 7);
+        }
       } catch {}
     })();
     return () => { alive = false; };
@@ -709,7 +748,7 @@ const Analytics: React.FC = () => {
         <div className={styles.kpiCard}>
           <div className={styles.kpiHeader}>
             <Eye size={22} className={styles.kpiIcon} />
-            <span className={styles.kpiLabel}>Total Visits</span>
+            <span className={styles.kpiLabel}>Total Visits (last {retentionDays}d)</span>
           </div>
           <div className={styles.kpiValue}>{(stats.totalVisits || 0).toLocaleString()}</div>
         </div>

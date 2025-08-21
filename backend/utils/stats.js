@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { getUsers, getMetrics, getActivities, getVisitors } = require('./dataStore');
+const { getUsers, getMetrics, getActivities, getVisitors, getSettings } = require('./dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const useMongo = () => {
@@ -72,9 +72,19 @@ async function computeStats() {
   let totalVisits = 0;
   try {
     const activities = await getActivities();
+    // Determine retention window (in days) from settings; default to 7
+    let retentionDays = 7;
+    try {
+      const settings = await getSettings().catch(() => ({}));
+      retentionDays = Number(settings && settings.autoDeleteDays) || 7;
+    } catch (_) {}
+    const cutoffMs = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
     const uniq = new Set();
     for (const a of (activities || [])) {
       if (!a || a.type !== 'site_visit') continue;
+      // Respect retention window regardless of prune schedule
+      const ts = a && a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      if (!ts || ts < cutoffMs) continue;
       const key = `${a.ip || ''}|${a.ua || ''}`;
       uniq.add(key);
       const dt = (a.deviceType || '').toString().trim() || classifyDevice(a.ua || '');
