@@ -4,13 +4,11 @@ import { createRoot } from 'react-dom/client';
 // Lazy load the main App component
 const App = lazy(() => import('./App'));
 
-// Add performance monitoring in development
+// Non-blocking web vitals in dev
 if (import.meta.env.DEV) {
-  const { webVitals } = await import('./utils/webVitals');
-  webVitals();
+  import('./utils/webVitals').then(m => m.webVitals && m.webVitals());
 }
 
-// Create root with concurrent mode
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Suspense

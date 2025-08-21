@@ -6,14 +6,13 @@ import { AuthProvider } from './contexts/AuthContext';
 import { publicAPI } from './services/api';
 
 // Lazy load components
-const Navbar = lazy(() => import('./components/Navbar/Navbar'));
-const Footer = lazy(() => import('./components/Footer/Footer'));
-const VisitTracker = lazy(() => import('./components/VisitTracker/VisitTracker'));
+import Navbar from './components/Navbar/Navbar';
+import Footer from './components/Footer/Footer';
+import VisitTracker from './components/VisitTracker/VisitTracker';
 const Maintenance = lazy(() => import('./pages/Maintenance/Maintenance'));
 
 // Lazy load pages
-const Home = lazy(() => import('./pages/Home/Home'));
-
+import Home from './pages/Home/Home';
 // Lazy load tool pages
 const CompressImage = lazy(() => import('./pages/Tools/CompressImage/CompressImage'));
 const CompressVideo = lazy(() => import('./pages/Tools/CompressVideo/CompressVideo'));
@@ -44,7 +43,7 @@ import './App.css';
 
 function App() {
   const [maintenance, setMaintenance] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(true);
   const [siteName, setSiteName] = useState('ConvertFlix');
 
   useEffect(() => {
@@ -131,4 +130,5 @@ function App() {
 }
 
 export default App;
+
 
