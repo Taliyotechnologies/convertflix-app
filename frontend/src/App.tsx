@@ -1,5 +1,5 @@
-﻿import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { lazy, useEffect, useState } from 'react';
+import {BrowserRouter as Router, Routes, Route} from 'react-router-dom';
+import {lazy, useEffect, useState, Suspense} from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -9,6 +9,7 @@ import { publicAPI } from './services/api';
 import Navbar from './components/Navbar/Navbar';
 import Footer from './components/Footer/Footer';
 import VisitTracker from './components/VisitTracker/VisitTracker';
+import BackToTop from './components/BackToTop/BackToTop';
 const Maintenance = lazy(() => import('./pages/Maintenance/Maintenance'));
 
 // Lazy load pages
@@ -40,6 +41,8 @@ import ResetPassword from './pages/Auth/ResetPassword/ResetPassword';
 // Import styles
 import './styles/global.css';
 import './App.css';
+import ScrollToTop from './components/ScrollToTop/ScrollToTop';
+
 
 function App() {
   const [maintenance, setMaintenance] = useState(false);
@@ -77,16 +80,18 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <Router>
+            <ScrollToTop />
             <VisitTracker />
             <div className="App">
               {!ready ? (
                 <div style={{ minHeight: '100vh' }} />
               ) : maintenance ? (
-                <Maintenance siteName={siteName} />
+                <Suspense fallback={null}><Maintenance siteName={siteName} /></Suspense>
               ) : (
                 <>
                   <Navbar />
                   <main>
+                  <Suspense fallback={null}>
                     <Routes>
                       {/* Home */}
                       <Route path="/" element={<Home />} />
@@ -117,11 +122,13 @@ function App() {
                       {/* 404 - Redirect to home for now */}
                       <Route path="*" element={<Home />} />
                     </Routes>
+                  </Suspense>
                   </main>
                   <Footer />
                 </>
               )}
             </div>
+            <BackToTop />
           </Router>
         </AuthProvider>
       </ThemeProvider>
@@ -130,5 +137,13 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
+
+
 
 
