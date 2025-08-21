@@ -422,7 +422,20 @@ const Analytics: React.FC = () => {
   };
 
   // Import cn utility if not already imported
-  const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
+  const cn = (...args: any[]) => {
+    const out: string[] = [];
+    for (const a of args) {
+      if (!a) continue;
+      if (typeof a === 'string') { out.push(a); continue; }
+      if (Array.isArray(a)) { out.push(cn(...a)); continue; }
+      if (typeof a === 'object') {
+        for (const [k, v] of Object.entries(a)) {
+          if (v) out.push(k);
+        }
+      }
+    }
+    return out.join(' ');
+  };
 
   return (
     <div className={styles.analyticsWrapper}>
@@ -519,7 +532,7 @@ const Analytics: React.FC = () => {
               <span className={styles.lastUpdated}>Last updated: {formatDate(lastUpdated)}</span>
             )}
             <button className={styles.refreshButton} onClick={refreshAnalytics} disabled={isRefreshing}>
-              {isRefreshing ? 'Refreshingâ€¦' : 'Refresh'}
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </button>
             {tab === 'activity' && (
               <button className={styles.exportButton} onClick={handleExportCsv}>Export CSV</button>
