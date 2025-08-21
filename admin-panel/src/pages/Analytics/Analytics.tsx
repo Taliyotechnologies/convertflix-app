@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BarChart3,
   RefreshCw,
@@ -466,47 +466,6 @@ const Analytics: React.FC = () => {
     </div>
 
     {/* Sticky Controls Bar */}
-    <div className={styles.stickyControls}>
-      <div className={styles.controlsBar}>
-        <button
-          className={styles.filtersToggle}
-          onClick={() => setFiltersOpen(v => !v)}
-          aria-label={filtersOpen ? 'Hide filters' : 'Show filters'}
-          title="Overview"
-        >
-          <BarChart3 size={16} className={styles.tabIcon} />
-          <span>Overview</span>
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'visitors' ? styles.tabActive : ''}`}
-          onClick={() => setTab('visitors')}
-          aria-label="Visitors"
-          title="Visitors"
-        >
-          <UsersIcon size={16} className={styles.tabIcon} />
-          <span>Visitors</span>
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'conversions' ? styles.tabActive : ''}`}
-          onClick={() => setTab('conversions')}
-          aria-label="Conversions"
-          title="Conversions"
-        >
-          <FileText size={16} className={styles.tabIcon} />
-          <span>Conversions</span>
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'activity' ? styles.tabActive : ''}`}
-          onClick={() => setTab('activity')}
-          aria-label="Activity"
-          title="Activity"
-        >
-          <ActivityIcon size={16} className={styles.tabIcon} />
-          <span>Activity</span>
-        </button>
-      </div>
-
-      {/* Sticky Controls Bar */}
       <div className={styles.stickyControls}>
         <div className={styles.controlsBar}>
           <button
@@ -521,7 +480,7 @@ const Analytics: React.FC = () => {
               <span className={styles.lastUpdated}>Last updated: {formatDate(lastUpdated)}</span>
             )}
             <button className={styles.refreshButton} onClick={refreshAnalytics} disabled={isRefreshing}>
-              {isRefreshing ? 'Refreshing…' : 'Refresh'}
+              {isRefreshing ? 'Refreshingâ€¦' : 'Refresh'}
             </button>
             {tab === 'activity' && (
               <button className={styles.exportButton} onClick={handleExportCsv}>Export CSV</button>
@@ -903,3 +862,4 @@ const Analytics: React.FC = () => {
 };
 
 export default Analytics;
+
