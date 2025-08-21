@@ -11,10 +11,12 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { subscribeSSE } from '../../services/realtime';
 import { getAdminSettings } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 import styles from './Header.module.css';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof document !== 'undefined') {
@@ -82,6 +84,7 @@ const Header: React.FC = () => {
 
   const handleNotificationsClick = () => {
     setUnread(0);
+    try { navigate('/analytics'); } catch {}
   };
 
   return (
@@ -140,11 +143,17 @@ const Header: React.FC = () => {
                   <span className={styles.dropdownEmail}>{user?.email || 'admin@example.com'}</span>
                 </div>
                 <div className={styles.dropdownDivider} />
-                <button className={styles.dropdownItem}>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => { try { navigate('/users'); } catch {}; setShowDropdown(false); }}
+                >
                   <User size={16} />
                   Profile
                 </button>
-                <button className={styles.dropdownItem}>
+                <button
+                  className={styles.dropdownItem}
+                  onClick={() => { try { navigate('/settings'); } catch {}; setShowDropdown(false); }}
+                >
                   <Settings size={16} />
                   Settings
                 </button>

@@ -8,6 +8,12 @@ const useMongo = () => {
 };
 
 async function computeStats() {
+  // Initialize analytics objects
+  const deviceTypeVisits = {};
+  const countryVisits = {};
+  const deviceTypeDevices = {};
+  const countryDevices = {};
+  
   // Persistent metrics for lifetime stats
   const metrics = await getMetrics();
   const lifetimeFiles = Number(metrics.lifetimeFiles || 0);
@@ -64,9 +70,6 @@ async function computeStats() {
 
   // Unique visits computed from activities (unique ip+ua across retained history)
   let totalVisits = 0;
-  // Visitor analytics aggregates
-  const deviceTypeVisits = {};
-  const countryVisits = {};
   try {
     const activities = await getActivities();
     const uniq = new Set();
@@ -86,8 +89,6 @@ async function computeStats() {
 
   // Device and country breakdown from unique devices (visitors store)
   let uniqueDevices = 0;
-  const deviceTypeDevices = {};
-  const countryDevices = {};
   let newDevicesToday = 0;
   try {
     const visitors = await getVisitors();

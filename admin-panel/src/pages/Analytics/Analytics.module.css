@@ -6,7 +6,138 @@
 
 /* Header */
 .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.refreshButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+}
+
+.refreshButton:hover {
+  background: var(--color-primary-dark);
+}
+
+.refreshButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.headerTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.connectionStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  background: var(--bg-secondary);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.connectionStatus.connected {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
+}
+
+.statusDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-error);
+  transition: background-color 0.3s ease;
+}
+
+.connectionStatus.connected .statusDot {
+  background-color: var(--color-success);
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.statusText {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.reconnectButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--color-error);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.reconnectButton:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.connectionError {
+  color: var(--color-error);
+  font-weight: 500;
+}
+
+.connectionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: pulse 2s infinite;
+}
+
+.connectionError .connectionDot {
+  background-color: var(--color-error);
+  animation: none;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
 .title {
@@ -21,6 +152,37 @@
   font-size: 1rem;
 }
 
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.75rem;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 0.25rem;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text-primary); background: var(--bg-secondary); }
+.tab:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(59 130 246 / 0.25); }
+.tabActive {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--button-start), var(--button-end));
+}
+.tabIcon { color: currentColor; opacity: 0.9; flex-shrink: 0; }
+
 /* Controls */
 .controls {
   display: flex;
@@ -28,6 +190,51 @@
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 1rem;
+}
+
+.hiddenFilters { display: none; }
+
+/* Visit Notification */
+.visitNotification {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: var(--bg-primary);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: 0.5rem;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 1000;
+  transform: translateX(120%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.visitNotification.show {
+  transform: translateX(0);
+}
+
+/* Provide a local .show class so CSS Modules can apply it */
+.show { /* satisfy linter */ transform: translateZ(0); }
+
+.visitBadge {
+  background: var(--accent-primary);
+  color: white;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 .controlGroup { 
@@ -46,6 +253,7 @@
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
+  min-width: 150px;
 }
 
 .exportButton {
@@ -56,6 +264,41 @@
   border-radius: 0.5rem;
   font-weight: 600;
 }
+.exportButton:hover { background: linear-gradient(135deg, var(--button-hover-start), var(--button-hover-end)); }
+
+/* Sticky Controls + Toolbar */
+.stickyControls {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg-body, var(--bg-primary));
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-color);
+}
+.controlsBar { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.25rem; flex-wrap: wrap; }
+.toolbarRight { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+.filtersToggle {
+  background: var(--control-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--control-border);
+  padding: 0.45rem 0.8rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+.filtersToggle:hover { background: var(--control-hover-bg); border-color: var(--control-hover-border); }
+@media (min-width: 901px) { .filtersToggle { display: none; } }
+@media (min-width: 901px) { .hiddenFilters { display: flex; } }
+.lastUpdated { color: var(--text-muted); font-size: 0.85rem; }
+.refreshButton {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+.refreshButton:hover { background: var(--control-hover-bg); border-color: var(--control-hover-border); }
+.refreshButton:disabled { opacity: 0.7; cursor: not-allowed; }
 
 /* KPI Grid */
 .kpiGrid {
@@ -71,7 +314,9 @@
   border-radius: 0.75rem;
   padding: 1rem;
   box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+.kpiCard:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
 .kpiHeader {
   display: flex;
@@ -108,7 +353,9 @@
   border-radius: 0.75rem;
   padding: 1rem;
   box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
 .cardHeader {
   display: flex;

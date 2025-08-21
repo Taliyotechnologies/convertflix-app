@@ -1,33 +1,48 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
-import Navbar from './components/Navbar/Navbar';
-import VisitTracker from './components/VisitTracker/VisitTracker';
-import Footer from './components/Footer/Footer';
-import Maintenance from './pages/Maintenance/Maintenance';
+import { Loader } from '@mantine/core';
 import { publicAPI } from './services/api';
 
-// Pages
-import Home from './pages/Home/Home';
+// Lazy load components
+const Navbar = lazy(() => import('./components/Navbar/Navbar'));
+const Footer = lazy(() => import('./components/Footer/Footer'));
+const VisitTracker = lazy(() => import('./components/VisitTracker/VisitTracker'));
+const Maintenance = lazy(() => import('./pages/Maintenance/Maintenance'));
 
-// Tool Pages
-import CompressImage from './pages/Tools/CompressImage/CompressImage';
-import CompressVideo from './pages/Tools/CompressVideo/CompressVideo';
-import CompressPDF from './pages/Tools/CompressPDF/CompressPDF';
-import CompressAudio from './pages/Tools/CompressAudio/CompressAudio';
-import ConvertImage from './pages/Tools/ConvertImage/ConvertImage';
-import ConvertVideo from './pages/Tools/ConvertVideo/ConvertVideo';
-import ConvertPDF from './pages/Tools/ConvertPDF/ConvertPDF';
-import ConvertAudio from './pages/Tools/ConvertAudio/ConvertAudio';
+// Lazy load pages
+const Home = lazy(() => import('./pages/Home/Home'));
 
-// Company Pages
-import About from './pages/Company/About/About';
-import Contact from './pages/Company/Contact/Contact';
-import Owner from './pages/Company/Owner/Owner';
-import Terms from './pages/Company/Terms/Terms';
-import Privacy from './pages/Company/Privacy/Privacy';
+// Lazy load tool pages
+const CompressImage = lazy(() => import('./pages/Tools/CompressImage/CompressImage'));
+const CompressVideo = lazy(() => import('./pages/Tools/CompressVideo/CompressVideo'));
+const CompressPDF = lazy(() => import('./pages/Tools/CompressPDF/CompressPDF'));
+const CompressAudio = lazy(() => import('./pages/Tools/CompressAudio/CompressAudio'));
+const ConvertImage = lazy(() => import('./pages/Tools/ConvertImage/ConvertImage'));
+const ConvertVideo = lazy(() => import('./pages/Tools/ConvertVideo/ConvertVideo'));
+const ConvertPDF = lazy(() => import('./pages/Tools/ConvertPDF/ConvertPDF'));
+const ConvertAudio = lazy(() => import('./pages/Tools/ConvertAudio/ConvertAudio'));
+
+// Lazy load company pages
+const About = lazy(() => import('./pages/Company/About/About'));
+const Contact = lazy(() => import('./pages/Company/Contact/Contact'));
+const Owner = lazy(() => import('./pages/Company/Owner/Owner'));
+const Terms = lazy(() => import('./pages/Company/Terms/Terms'));
+const Privacy = lazy(() => import('./pages/Company/Privacy/Privacy'));
+
+// Loading component
+const PageLoader = () => (
+  <div style={{ 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    minHeight: '60vh' 
+  }}>
+    <Loader size="xl" variant="dots" />
+  </div>
+);
 
 // Auth Pages
 import Login from './pages/Auth/Login/Login';

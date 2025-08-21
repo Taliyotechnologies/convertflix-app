@@ -386,83 +386,82 @@ const Analytics: React.FC = () => {
   const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
 
   return (
-    <div className={styles.analyticsWrapper}>
-      <div className={styles.container}>
-        {/* Header */}
-        <div className={styles.header}>
-          <div className={styles.headerTitle}>
-            <h1 className={styles.title}>Analytics</h1>
-            <p className={styles.subtitle}>
-              Key metrics and recent activity for ConvertFlix
-            </p>
-            <div className={cn(styles.connectionStatus, { [styles.connected]: isConnected })}>
-              <span className={styles.statusDot} />
-              <span className={styles.statusText}>
-                {isConnected ? 'Live updates active' : 'Connection lost - reconnecting...'}
-              </span>
-              {!isConnected && (
-                <button 
-                  onClick={refreshAnalytics}
-                  className={styles.reconnectButton}
-                  aria-label="Reconnect"
-                >
-                  <RefreshCw size={14} />
-                </button>
-              )}
-            </div>
+    <div className={styles.container}>
+      {/* Header */}
+      <div className={styles.header}>
+        <div className={styles.headerTitle}>
+          <h1 className={styles.title}>Analytics</h1>
+          <p className={styles.subtitle}>
+            Key metrics and recent activity for ConvertFlix
+          </p>
+          <div className={cn(styles.connectionStatus, { [styles.connected]: isConnected })}>
+            <span className={styles.statusDot} />
+            <span className={styles.statusText}>
+              {isConnected ? 'Live updates active' : 'Connection lost - reconnecting...'}
+            </span>
+            {!isConnected && (
+              <button 
+                onClick={refreshAnalytics}
+                className={styles.reconnectButton}
+                aria-label="Reconnect"
+              >
+                <RefreshCw size={14} />
+              </button>
+            )}
           </div>
         </div>
-        <div className={styles.headerActions}>
-          <button 
-            className={styles.refreshButton}
-            onClick={refreshAnalytics}
-            disabled={isRefreshing}
-            aria-label="Refresh analytics data"
-          >
-            <RefreshCw className={cn(styles.refreshIcon, { [styles.refreshing]: isRefreshing })} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
-        </div>
       </div>
+      <div className={styles.headerActions}>
+        <button 
+          className={styles.refreshButton}
+          onClick={refreshAnalytics}
+          disabled={isRefreshing}
+          aria-label="Refresh analytics data"
+        >
+          <RefreshCw className={cn(styles.refreshIcon, { [styles.refreshing]: isRefreshing })} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+    </div>
 
-      {/* Tabs */}
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${tab === 'overview' ? styles.tabActive : ''}`}
-          onClick={() => setTab('overview')}
-          aria-label="Overview"
-          title="Overview"
-        >
-          <BarChart3 size={16} className={styles.tabIcon} />
-          <span>Overview</span>
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'visitors' ? styles.tabActive : ''}`}
-          onClick={() => setTab('visitors')}
-          aria-label="Visitors"
-          title="Visitors"
-        >
-          <UsersIcon size={16} className={styles.tabIcon} />
-          <span>Visitors</span>
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'conversions' ? styles.tabActive : ''}`}
-          onClick={() => setTab('conversions')}
-          aria-label="Conversions"
-          title="Conversions"
-        >
-          <FileText size={16} className={styles.tabIcon} />
-          <span>Conversions</span>
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'activity' ? styles.tabActive : ''}`}
-          onClick={() => setTab('activity')}
-          aria-label="Activity"
-          title="Activity"
-        >
-          <ActivityIcon size={16} className={styles.tabIcon} />
-          <span>Activity</span>
-        </button>
+    {/* Tabs */}
+    <div className={styles.tabs}>
+      <button
+        className={`${styles.tab} ${tab === 'overview' ? styles.tabActive : ''}`}
+        onClick={() => setTab('overview')}
+        aria-label="Overview"
+        title="Overview"
+      >
+        <BarChart3 size={16} className={styles.tabIcon} />
+        <span>Overview</span>
+      </button>
+      <button
+        className={`${styles.tab} ${tab === 'visitors' ? styles.tabActive : ''}`}
+        onClick={() => setTab('visitors')}
+        aria-label="Visitors"
+        title="Visitors"
+      >
+        <UsersIcon size={16} className={styles.tabIcon} />
+        <span>Visitors</span>
+      </button>
+      <button
+        className={`${styles.tab} ${tab === 'conversions' ? styles.tabActive : ''}`}
+        onClick={() => setTab('conversions')}
+        aria-label="Conversions"
+        title="Conversions"
+      >
+        <FileText size={16} className={styles.tabIcon} />
+        <span>Conversions</span>
+      </button>
+      <button
+        className={`${styles.tab} ${tab === 'activity' ? styles.tabActive : ''}`}
+        onClick={() => setTab('activity')}
+        aria-label="Activity"
+        title="Activity"
+      >
+        <ActivityIcon size={16} className={styles.tabIcon} />
+        <span>Activity</span>
+      </button>
     </div>
 
     {/* Sticky Controls Bar */}
@@ -900,6 +899,6 @@ const Analytics: React.FC = () => {
       )}
     </div>
   );
-};
+}
 
 export default Analytics;

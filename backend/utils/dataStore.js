@@ -76,33 +76,43 @@ async function getActivities() {
 }
 
 async function addActivity(activity) {
-  // Accept extra fields for internal use; ensure base fields exist
-  const base = {
-    id: activity.id || String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
-    type: activity.type || 'file_upload',
-    message: activity.message || '',
-    timestamp: activity.timestamp || new Date().toISOString(),
-    userId: activity.userId || '',
-    severity: activity.severity || 'info'
+  if (!activity || typeof activity !== 'object') throw new Error('Activity must be an object');
+  const required = ['type', 'message', 'severity'];
+  const missing = required.filter(f => !(f in activity));
+  if (missing.length > 0) throw new Error(`Missing required fields: ${missing.join(', ')}`);
+  
+  const activities = await getActivities();
+  const newActivity = {
+    id: Date.now().toString(),
+    timestamp: new Date().toISOString(),
+    userId: null,
+    ...activity,
   };
-  const extended = { ...activity, ...base };
-  const list = await getActivities();
-  list.push(extended);
-  await writeJSON('activities', list);
-  try {
-    const settings = await getSettings().catch(() => ({}));
-    // Default: notifications ON unless explicitly disabled
-    if ((settings && typeof settings.adminNotifications !== 'boolean') || settings.adminNotifications) {
-      realtime.emit('activity', extended);
+  
+  activities.unshift(newActivity);
+  await saveActivities(activities);
+  
+  // Get settings to check if notifications are enabled
+  const settings = await getSettings().catch(() => ({}));
+  
+  // Emit to realtime subscribers if notifications are enabled
+  if (settings.adminNotifications !== false) {
+    realtime.emit('activity', newActivity);
+  }
+  
+  // If this is a site visit or new device, emit updated stats
+  if (newActivity.type === 'site_visit' || newActivity.type === 'new_device') {
+    try {
+      const { computeStats } = require('./stats');
+      const stats = await computeStats();
+      realtime.emit('stats', stats);
+      realtime.emit('stats_metrics_updated', { reason: newActivity.type });
+    } catch (error) {
+      console.error('Error computing stats after activity:', error);
     }
-  } catch (_) {}
-  // Notify stats listeners when visits or devices are recorded so dashboards update immediately
-  try {
-    if (extended && (extended.type === 'site_visit' || extended.type === 'new_device')) {
-      realtime.emit('stats_metrics_updated', { reason: extended.type });
-    }
-  } catch (_) {}
-  return extended;
+  }
+  
+  return newActivity;
 }
 
 // Save activities (used by retention pruning)
