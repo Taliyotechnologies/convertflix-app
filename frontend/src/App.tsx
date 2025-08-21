@@ -1,9 +1,8 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Suspense, lazy, useEffect, useState } from 'react';
+﻿import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { lazy, useEffect, useState } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
-import { Loader } from '@mantine/core';
 import { publicAPI } from './services/api';
 
 // Lazy load components
@@ -33,17 +32,6 @@ const Terms = lazy(() => import('./pages/Company/Terms/Terms'));
 const Privacy = lazy(() => import('./pages/Company/Privacy/Privacy'));
 
 // Loading component
-const PageLoader = () => (
-  <div style={{ 
-    display: 'flex', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    minHeight: '60vh' 
-  }}>
-    <Loader size="xl" variant="dots" />
-  </div>
-);
-
 // Auth Pages
 import Login from './pages/Auth/Login/Login';
 import Signup from './pages/Auth/Signup/Signup';
@@ -143,3 +131,4 @@ function App() {
 }
 
 export default App;
+
