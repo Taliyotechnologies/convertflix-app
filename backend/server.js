@@ -82,7 +82,7 @@ app.listen(PORT, () => {
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
 
-  // Schedule retention cleanup (default 7 days); run once on startup and hourly
+  // Schedule retention cleanup (default 7 days); run once on startup and then daily at 3 AM
   async function runCleanup() {
     try {
       const settings = await getSettings().catch(() => ({}));
@@ -93,12 +93,37 @@ app.listen(PORT, () => {
       }
       // Prune dashboard data (activities + metrics byDay) to last N days (same as autoDeleteDays)
       await cleanupOldData(days);
+      console.log(`✅ Retention cleanup completed at ${new Date().toISOString()}`);
     } catch (e) {
       console.error('Retention cleanup run error:', e && e.message ? e.message : e);
     }
   }
+  
+  // Run cleanup on startup
   runCleanup();
-  setInterval(runCleanup, 60 * 60 * 1000);
+  
+  // Schedule daily cleanup at 3 AM
+  function scheduleDailyCleanup() {
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(3, 0, 0, 0);
+    if (now >= target) {
+      target.setDate(target.getDate() + 1); // Set to tomorrow 3 AM if it's already past 3 AM today
+    }
+    
+    const timeUntilTarget = target.getTime() - now.getTime();
+    
+    setTimeout(() => {
+      runCleanup();
+      // Schedule next day
+      scheduleDailyCleanup();
+    }, timeUntilTarget);
+    
+    console.log(`⏰ Next retention cleanup scheduled for: ${target.toISOString()}`);
+  }
+  
+  // Start the daily cleanup scheduler
+  scheduleDailyCleanup();
 });
 
 module.exports = app;

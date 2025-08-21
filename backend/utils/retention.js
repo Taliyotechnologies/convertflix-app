@@ -24,7 +24,7 @@ async function cleanupOldData(days = 14) {
   } catch (_) {}
 }
 
-async function cleanupOldUploads(days = 1) {
+async function cleanupOldUploads(days = 7) {
   const now = Date.now();
   const threshold = now - msFromDays(days);
   const deleted = [];
