@@ -17,25 +17,41 @@ export const getFileExtension = (filename: string): string => {
 // Generic API request function
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token');
-  
+  const hasBody = options.body !== undefined && options.body !== null;
+  const isPublic = endpoint.startsWith('/public');
+
+  // Build headers conditionally to avoid unnecessary preflights
+  const defaultHeaders: Record<string, string> = {};
+  if (hasBody && !(options.headers && 'Content-Type' in (options.headers as any))) {
+    // Only set Content-Type for requests with a body; for GET/HEAD skip to avoid preflight
+    defaultHeaders['Content-Type'] = 'application/json';
+  }
+  if (token && !isPublic) {
+    // Avoid attaching Authorization to public endpoints (prevents preflight for simple GETs)
+    defaultHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   const config: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
+    // Explicitly set mode to 'cors' for cross-origin deployments
+    mode: 'cors',
     ...options,
+    headers: {
+      ...defaultHeaders,
+      ...(options.headers || {}),
+    },
   };
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const data = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
-      throw new Error(data.error || 'API request failed');
+      const message = isJson && (data as any)?.error ? (data as any).error : 'API request failed';
+      throw new Error(message);
     }
 
-    return data;
+    return data as any;
   } catch (error) {
     console.error('API request error:', error);
     throw error;

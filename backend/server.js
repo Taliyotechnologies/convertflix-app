@@ -15,11 +15,26 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
+// Robust CORS fallback: always echo Origin and handle OPTIONS early (some hosts strip headers on 404/500)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+  }
+  res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-Tools-Speed, X-Speed-Preset');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 // CORS: reflect origin, allow common methods/headers, handle preflight
 const corsOptions = {
   origin: (origin, cb) => cb(null, true),
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-Tools-Speed', 'X-Speed-Preset'],
   credentials: true,
   optionsSuccessStatus: 204,
 };
