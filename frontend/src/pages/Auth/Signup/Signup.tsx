@@ -83,8 +83,21 @@ const Signup: React.FC = () => {
     try {
       await signup(formData.name, formData.email, formData.password);
       navigate('/');
-    } catch (error) {
-      setErrors({ general: 'Account creation failed. Please try again.' });
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      const message = (err && err.message) ? String(err.message) : 'Account creation failed. Please try again.';
+      const lower = message.toLowerCase();
+      const newErrors: { [key: string]: string } = {};
+      if (lower.includes('exists') || lower.includes('already')) {
+        newErrors.email = message;
+      } else if (lower.includes('password')) {
+        newErrors.password = message;
+      } else if (lower.includes('required')) {
+        newErrors.general = message;
+      } else {
+        newErrors.general = message;
+      }
+      setErrors(newErrors);
     } finally {
       setIsSubmitting(false);
     }

@@ -7,6 +7,7 @@ import { publicAPI } from './services/api';
 
 // Lazy load components
 import Navbar from './components/Navbar/Navbar';
+import RequireAuth from './components/RequireAuth/RequireAuth';
 import Footer from './components/Footer/Footer';
 import VisitTracker from './components/VisitTracker/VisitTracker';
 import BackToTop from './components/BackToTop/BackToTop';
@@ -37,6 +38,8 @@ import Login from './pages/Auth/Login/Login';
 import Signup from './pages/Auth/Signup/Signup';
 import ForgotPassword from './pages/Auth/ForgotPassword/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword/ResetPassword';
+import Profile from './pages/User/Profile/Profile';
+import Settings from './pages/User/Settings/Settings';
 
 // Import styles
 import './styles/global.css';
@@ -118,6 +121,24 @@ function App() {
                       <Route path="/signup" element={<Signup />} />
                       <Route path="/forgot-password" element={<ForgotPassword />} />
                       <Route path="/reset-password" element={<ResetPassword />} />
+
+                      {/* User Pages (Protected) */}
+                      <Route
+                        path="/profile"
+                        element={
+                          <RequireAuth>
+                            <Profile />
+                          </RequireAuth>
+                        }
+                      />
+                      <Route
+                        path="/settings"
+                        element={
+                          <RequireAuth>
+                            <Settings />
+                          </RequireAuth>
+                        }
+                      />
 
                       {/* 404 - Redirect to home for now */}
                       <Route path="*" element={<Home />} />

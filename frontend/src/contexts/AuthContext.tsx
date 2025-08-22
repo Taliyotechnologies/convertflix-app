@@ -18,6 +18,7 @@ interface AuthContextType {
   resetPassword: (token: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -140,6 +141,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    setUser(prev => {
+      const next = prev ? { ...prev, ...updates } as User : (updates as User);
+      try { localStorage.setItem('user', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -149,7 +158,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       forgotPassword, 
       resetPassword, 
       logout, 
-      isLoading 
+      isLoading,
+      updateUser 
     }}>
       {children}
     </AuthContext.Provider>
