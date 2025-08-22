@@ -96,3 +96,42 @@
 .statusError {
   color: #b42318;
 }
+
+/* New additions */
+.avatarBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.avatarActions {
+  display: flex;
+  gap: 8px;
+}
+
+.hiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.danger {
+  color: #b42318;
+  border-color: #f3c1bb;
+}
+
+.copyRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}

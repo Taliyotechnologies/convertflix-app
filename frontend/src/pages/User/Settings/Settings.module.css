@@ -58,3 +58,23 @@
   display: flex;
   gap: 12px;
 }
+
+/* New additions */
+.helper {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.statusSuccess {
+  color: #1a7f37;
+}
+
+.statusError {
+  color: #b42318;
+}
+
+.danger {
+  color: #b42318;
+  border-color: #f3c1bb;
+}

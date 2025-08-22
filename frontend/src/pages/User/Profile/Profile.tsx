@@ -10,6 +10,8 @@ const Profile: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   if (isLoading) return null;
   if (!user) return null;
@@ -33,10 +35,69 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please select a valid image file.');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      updateUser({ avatar: dataUrl });
+      setAvatarError(null);
+    };
+    reader.readAsDataURL(file);
+    // allow re-selecting the same file
+    e.target.value = '';
+  };
+
+  const removeAvatar = () => {
+    updateUser({ avatar: undefined });
+  };
+
+  const copyId = async () => {
+    try {
+      await navigator.clipboard.writeText(user.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      // no-op
+    }
+  };
+
   return (
     <div className={styles.profilePage}>
       <div className={styles.header}>
-        <img className={styles.avatar} src={user.avatar || generateAvatar(user.fullName)} alt={user.email} />
+        <div className={styles.avatarBlock}>
+          <img
+            className={styles.avatar}
+            src={user.avatar || generateAvatar(user.fullName)}
+            alt={user.email}
+          />
+          <div className={styles.avatarActions}>
+            <label htmlFor="avatarInput" className={`${styles.button} ${styles.secondary} ${styles.small}`}>
+              Change
+            </label>
+            <button
+              type="button"
+              className={`${styles.button} ${styles.small} ${styles.secondary} ${styles.danger}`}
+              onClick={removeAvatar}
+            >
+              Remove
+            </button>
+            <input
+              id="avatarInput"
+              type="file"
+              accept="image/*"
+              className={styles.hiddenInput}
+              onChange={handleAvatarChange}
+            />
+          </div>
+          {avatarError && <div className={`${styles.helper} ${styles.statusError}`}>{avatarError}</div>}
+        </div>
         <h1 className={styles.title}>Your Profile</h1>
       </div>
 
@@ -58,6 +119,15 @@ const Profile: React.FC = () => {
             <div>
               <label className={styles.label}>Email</label>
               <input className={styles.input} type="email" value={user.email} disabled />
+            </div>
+            <div>
+              <label className={styles.label}>User ID</label>
+              <div className={styles.copyRow}>
+                <input className={styles.input} type="text" value={user.id} disabled />
+                <button type="button" className={`${styles.button} ${styles.secondary}`} onClick={copyId}>
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
             </div>
           </div>
           <div className={styles.actions}>
