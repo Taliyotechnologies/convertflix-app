@@ -10,6 +10,7 @@ import {
   Menu
 } from 'lucide-react';
 import styles from './Navbar.module.css';
+import { generateAvatar } from '../../utils/avatar';
 
 const Navbar: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -187,7 +188,7 @@ const Navbar: React.FC = () => {
                 className={styles.profileButton}
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
               >
-                <img src={user.avatar} alt={user.email} className={styles.avatar} />
+                <img src={user.avatar || generateAvatar(user.fullName)} alt={user.email} className={styles.avatar} />
                 <span className={styles.userName}>{user.fullName}</span>
                 <span className={styles.dropdownArrow}>
                   <ChevronDown size={16} />

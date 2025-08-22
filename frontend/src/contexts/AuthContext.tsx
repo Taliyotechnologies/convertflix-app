@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authAPI } from '../services/api';
+import { generateAvatar } from '../utils/avatar';
 
 interface User {
   id: string;
@@ -40,7 +41,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (token && userData) {
       try {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+        const ensured = parsed?.avatar ? parsed : { ...parsed, avatar: generateAvatar(parsed?.fullName) };
+        setUser(ensured);
+        try { localStorage.setItem('user', JSON.stringify(ensured)); } catch {}
         // Verify token with backend
         authAPI.getProfile().catch(() => {
           // Token is invalid, clear it
@@ -61,10 +65,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await authAPI.login(email, password);
-      
+
+      const ensuredUser = response?.user?.avatar
+        ? response.user
+        : { ...response.user, avatar: generateAvatar(response?.user?.fullName) };
+
       localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      setUser(response.user);
+      localStorage.setItem('user', JSON.stringify(ensuredUser));
+      setUser(ensuredUser);
     } catch (error) {
       throw error;
     } finally {
@@ -76,10 +84,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await authAPI.signup(fullName, email, password);
-      
+
+      const ensuredUser = response?.user?.avatar
+        ? response.user
+        : { ...response.user, avatar: generateAvatar(response?.user?.fullName) };
+
       localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      setUser(response.user);
+      localStorage.setItem('user', JSON.stringify(ensuredUser));
+      setUser(ensuredUser);
     } catch (error) {
       throw error;
     } finally {
@@ -91,10 +103,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await authAPI.googleAuth(googleToken, email, fullName, avatar);
-      
+
+      const ensuredUser = response?.user?.avatar
+        ? response.user
+        : { ...response.user, avatar: generateAvatar(response?.user?.fullName) };
+
       localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      setUser(response.user);
+      localStorage.setItem('user', JSON.stringify(ensuredUser));
+      setUser(ensuredUser);
     } catch (error) {
       throw error;
     } finally {
