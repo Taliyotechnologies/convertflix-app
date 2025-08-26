@@ -41,8 +41,13 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(morgan('combined'));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Configurable body size limits (defaults to 50MB)
+const JSON_BODY_LIMIT_MB = Number(process.env.JSON_BODY_LIMIT_MB || 50);
+const URLENCODED_BODY_LIMIT_MB = Number(process.env.URLENCODED_BODY_LIMIT_MB || JSON_BODY_LIMIT_MB);
+const jsonLimitStr = `${JSON_BODY_LIMIT_MB}mb`;
+const urlencodedLimitStr = `${URLENCODED_BODY_LIMIT_MB}mb`;
+app.use(express.json({ limit: jsonLimitStr }));
+app.use(express.urlencoded({ extended: true, limit: urlencodedLimitStr }));
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

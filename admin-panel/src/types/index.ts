@@ -40,6 +40,13 @@ export interface DashboardStats {
   deviceTypeDevices?: Record<string, number>;
   countryDevices?: Record<string, number>;
   newDevicesToday?: number;
+  mem?: {
+    rssMB: number;
+    heapUsedMB: number;
+    heapTotalMB: number;
+    extMB: number;
+    abMB: number;
+  };
 }
 
 export interface AdminSettings {

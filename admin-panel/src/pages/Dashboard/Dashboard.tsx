@@ -217,6 +217,21 @@ const Dashboard: React.FC = () => {
             <p className={styles.chartDescription}>Average file size per upload</p>
           </div>
         </div>
+
+        <div className={styles.chartCard}>
+          <div className={styles.chartHeader}>
+            <h3 className={styles.chartTitle}>Server Memory</h3>
+            <BarChart3 size={20} className={styles.chartIcon} />
+          </div>
+          <div className={styles.chartValue}>
+            <span className={styles.fileSize}>
+              {stats.mem ? `${(stats.mem.rssMB || 0).toLocaleString()} MB` : '—'}
+            </span>
+            <p className={styles.chartDescription}>
+              RSS (resident) • Heap Used: {stats.mem ? `${(stats.mem.heapUsedMB || 0).toLocaleString()} MB` : '—'}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Files and Users */}

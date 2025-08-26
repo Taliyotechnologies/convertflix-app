@@ -117,6 +117,20 @@ async function computeStats() {
     }
   } catch (_) {}
 
+  // Current process memory snapshot (MB)
+  const toMB = (v) => Math.round((v || 0) / (1024 * 1024));
+  let mem = { rssMB: 0, heapUsedMB: 0, heapTotalMB: 0, extMB: 0, abMB: 0 };
+  try {
+    const mu = typeof process !== 'undefined' && typeof process.memoryUsage === 'function' ? process.memoryUsage() : {};
+    mem = {
+      rssMB: toMB(mu.rss),
+      heapUsedMB: toMB(mu.heapUsed),
+      heapTotalMB: toMB(mu.heapTotal),
+      extMB: toMB(mu.external),
+      abMB: toMB(mu.arrayBuffers)
+    };
+  } catch (_) {}
+
   return {
     totalUsers,
     totalFiles,
@@ -134,6 +148,7 @@ async function computeStats() {
     deviceTypeDevices,
     countryDevices,
     newDevicesToday,
+    mem,
   };
 }
 
