@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Search, CheckCircle, Eye } from 'lucide-react';
+import { RefreshCw, Search, CheckCircle, Eye, Mail, X, ChevronDown, ChevronUp } from 'lucide-react';
 import styles from './Contacts.module.css';
 import { getContacts, updateContactMessage } from '../../services/api';
 import type { ContactMessage } from '../../types';
@@ -20,6 +20,7 @@ const Contacts: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | 'new' | 'read' | 'resolved'>('all');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const fetchContacts = useCallback(async () => {
     try {
@@ -53,6 +54,10 @@ const Contacts: React.FC = () => {
     setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c)));
   };
 
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const markRead = async (c: ContactMessage) => {
     const patch: Partial<ContactMessage> = { status: 'read', read: true } as any;
     applyPatchLocal(c.id, patch);
@@ -77,7 +82,13 @@ const Contacts: React.FC = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <div className={styles.title}>Contacts</div>
+        <div className={styles.titleWrap}>
+          <div className={styles.titleIcon}><Mail size={18} /></div>
+          <div>
+            <div className={styles.title}>Leads</div>
+            <div className={styles.subtitle}>Manage contact inquiries</div>
+          </div>
+        </div>
         <div className={styles.actions}>
           <button className={styles.btn} onClick={fetchContacts} title="Refresh">
             <RefreshCw size={16} style={{ marginRight: 6 }} /> Refresh
@@ -87,14 +98,19 @@ const Contacts: React.FC = () => {
 
       <div className={styles.panel}>
         <div className={styles.filters}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Search size={16} style={{ opacity: 0.7 }} />
+          <div className={styles.searchBox}>
+            <Search size={16} className={styles.searchIcon} />
             <input
               className={styles.input}
               placeholder="Search name, email, subject, message"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            {search && (
+              <button className={styles.clearBtn} onClick={() => setSearch('')} aria-label="Clear search">
+                <X size={14} />
+              </button>
+            )}
           </div>
           <select className={styles.select} value={status} onChange={(e) => setStatus(e.target.value as any)}>
             <option value="all">All</option>
@@ -121,7 +137,7 @@ const Contacts: React.FC = () => {
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id}>
+                  <tr key={c.id} className={`${styles.row} ${c.status === 'new' ? styles.rowNew : ''}`}>
                     <td>
                       <div style={{ fontWeight: 600 }}>{c.name}</div>
                       <div className={styles.meta}>{c.email}</div>
@@ -133,7 +149,16 @@ const Contacts: React.FC = () => {
                         {c.updatedAt && <span>updated {formatDate(c.updatedAt)}</span>}
                       </div>
                     </td>
-                    <td className={styles.messageCell}>{c.message}</td>
+                    <td className={styles.messageCell}>
+                      <div className={styles.messageText}>
+                        {c.message.length > 180 && !expanded[c.id] ? `${c.message.slice(0, 180)}…` : c.message}
+                      </div>
+                      {c.message.length > 180 && (
+                        <button className={styles.linkBtn} onClick={() => toggleExpand(c.id)}>
+                          {expanded[c.id] ? (<><ChevronUp size={12} /> Show less</>) : (<><ChevronDown size={12} /> Show more</>)}
+                        </button>
+                      )}
+                    </td>
                     <td>
                       <div>{formatDate(c.createdAt)}</div>
                     </td>

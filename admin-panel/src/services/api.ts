@@ -1,4 +1,4 @@
-import type { AdminSettings, DashboardStats, ContactMessage } from '../types';
+import type { AdminSettings, DashboardStats, ContactMessage, FileRecord } from '../types';
 
 const BASE: string = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
@@ -66,5 +66,31 @@ export async function updateContactMessage(id: string, patch: Partial<ContactMes
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch || {}),
+  });
+}
+
+// Files
+export async function getFiles(params?: {
+  range?: '7d' | '30d' | 'all';
+  from?: string; // ISO
+  to?: string;   // ISO
+  limit?: number;
+}): Promise<FileRecord[]> {
+  const q = new URLSearchParams();
+  if (params?.range) q.set('range', params.range);
+  if (params?.from) q.set('from', params.from);
+  if (params?.to) q.set('to', params.to);
+  if (params?.limit) q.set('limit', String(params.limit));
+  const qs = q.toString();
+  return request<FileRecord[]>(`/admin/files${qs ? `?${qs}` : ''}`);
+}
+
+export async function seedMockFiles(count?: number, force?: boolean): Promise<{ inserted: number; message?: string }> {
+  const q = new URLSearchParams();
+  if (typeof count === 'number') q.set('count', String(count));
+  if (typeof force === 'boolean') q.set('force', String(force));
+  const qs = q.toString();
+  return request<{ inserted: number; message?: string }>(`/admin/files/seed-mock${qs ? `?${qs}` : ''}` , {
+    method: 'POST',
   });
 }

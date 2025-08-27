@@ -5,6 +5,7 @@ import Header from './components/Header/Header';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Analytics from './pages/Analytics/Analytics';
 import Settings from './pages/Settings/Settings';
+import Files from './pages/Files/Files';
 import Contacts from './pages/Contacts/Contacts';
 import Login from './pages/Login/Login';
 import ForgotPassword from './pages/Auth/ForgotPassword.tsx';
@@ -71,6 +72,7 @@ const AppContent: React.FC = () => {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/files" element={<Files />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

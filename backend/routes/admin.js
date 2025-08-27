@@ -5,6 +5,8 @@ const { getUsers, getSettings, saveSettings, getContacts, updateContact } = requ
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const { computeStats } = require('../utils/stats');
+const FileRecord = require('../models/FileRecord');
+const { listFiles } = require('../utils/files');
 const useMongo = () => {
   try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
 };
@@ -70,10 +72,70 @@ router.get('/stream', auth, requireAdmin, async (req, res) => {
 });
 
 // @route   GET /api/admin/files
-// @desc    Removed (Files page removed)
+// @desc    List files (Mongo-backed if available). Default range: last 30 days.
 // @access  Private (Admin)
 router.get('/files', auth, requireAdmin, async (req, res) => {
-  return res.status(410).json({ error: 'Files API removed' });
+  try {
+    const range = String(req.query.range || '30d').toLowerCase(); // '7d' | '30d' | 'all'
+    const limit = Math.min(Math.max(Number(req.query.limit || 100), 1), 1000);
+    const fromParam = req.query.from ? new Date(String(req.query.from)) : null;
+    const toParam = req.query.to ? new Date(String(req.query.to)) : null;
+
+    let from = fromParam && !isNaN(fromParam) ? fromParam : null;
+    let to = toParam && !isNaN(toParam) ? toParam : null;
+    if (!from && range !== 'all') {
+      const days = range === '7d' ? 7 : 30;
+      from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    }
+    if (!to) to = new Date();
+
+    const q = {};
+    if (from || to) {
+      q.uploadedAt = {};
+      if (from) q.uploadedAt.$gte = from;
+      if (to) q.uploadedAt.$lte = to;
+    }
+
+    if (useMongo()) {
+      const docs = await FileRecord.find(q).sort({ uploadedAt: -1 }).limit(limit).lean();
+      const list = (docs || []).map(d => ({
+        id: String(d._id || d.id),
+        name: d.name,
+        type: d.type,
+        size: d.size,
+        status: d.status,
+        uploadedBy: d.uploadedBy || 'anonymous',
+        uploadedAt: new Date(d.uploadedAt).toISOString(),
+        convertedAt: d.convertedAt ? new Date(d.convertedAt).toISOString() : undefined,
+        originalFormat: d.originalFormat,
+        convertedFormat: d.convertedFormat,
+        compressionRatio: typeof d.compressionRatio === 'number' ? d.compressionRatio : undefined,
+      }));
+      return res.json(list);
+    }
+
+    // Fallback: list recent files from uploads dir and filter by date
+    const maxAgeDays = range === '7d' ? 7 : (range === 'all' ? 3650 : 30);
+    let list = listFiles(limit * 5, maxAgeDays) // get more then filter precisely
+      .map(r => ({
+        ...r,
+        uploadedAt: new Date(r.uploadedAt).toISOString(),
+        convertedAt: r.convertedAt ? new Date(r.convertedAt).toISOString() : undefined,
+      }));
+    if (from || to) {
+      const fromTs = from ? from.getTime() : 0;
+      const toTs = to ? to.getTime() : Date.now();
+      list = list.filter(r => {
+        const t = new Date(r.uploadedAt).getTime();
+        return t >= fromTs && t <= toTs;
+      });
+    }
+    list.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+    return res.json(list.slice(0, limit));
+  } catch (e) {
+    console.error('Get files error:', e);
+    res.status(500).json({ error: 'Server error getting files' });
+  }
 });
 
 // Activity endpoint removed (Analytics page removed)
@@ -107,11 +169,54 @@ router.put('/settings', auth, requireAdmin, async (req, res) => {
   }
 });
 
-// @route   DELETE /api/admin/files/:id
-// @desc    Removed (Files page removed)
+// @route   POST /api/admin/files/seed-mock
+// @desc    Seed mock files into MongoDB (only if using Mongo). No-op if already seeded unless force=true
 // @access  Private (Admin)
-router.delete('/files/:id', auth, requireAdmin, async (req, res) => {
-  return res.status(410).json({ error: 'Files API removed' });
+router.post('/files/seed-mock', auth, requireAdmin, async (req, res) => {
+  try {
+    if (!useMongo()) return res.status(400).json({ error: 'MongoDB not enabled' });
+    const force = String(req.query.force || 'false').toLowerCase() === 'true';
+    const count = Math.min(Math.max(Number(req.query.count || 8), 1), 100);
+    const existing = await FileRecord.estimatedDocumentCount();
+    if (existing > 0 && !force) return res.json({ inserted: 0, message: 'Already seeded' });
+
+    const types = ['video', 'pdf', 'audio', 'image', 'document'];
+    const names = [
+      'Product Demo.mp4', 'Quarterly Report.pdf', 'Interview Audio.wav', 'Brand Photo.png',
+      'Invoice Q2.pdf', 'Team Meeting.mp3', 'Launch Teaser.webm', 'Design Draft.docx'
+    ];
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const daysAgo = Math.floor(Math.random() * 30); // within 30 days
+      const uploadedAt = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000 - Math.random() * 86400000);
+      const type = types[Math.floor(Math.random() * types.length)];
+      const name = names[i % names.length];
+      const size = Math.floor(5_000_000 + Math.random() * 150_000_000);
+      const statusPool = ['completed', 'processing', 'failed'];
+      const status = statusPool[Math.floor(Math.random() * statusPool.length)];
+      const originalFormat = (name.split('.').pop() || 'bin').toLowerCase();
+      const completed = status === 'completed';
+      const convertedAt = completed ? new Date(uploadedAt.getTime() + Math.random() * 3_600_000) : undefined;
+      const compressionRatio = completed ? (0.35 + Math.random() * 0.35) : undefined; // 35%..70%
+      out.push({
+        name,
+        type,
+        size,
+        status,
+        uploadedBy: 'seed@convertflix.io',
+        uploadedAt,
+        convertedAt,
+        originalFormat,
+        convertedFormat: completed ? originalFormat : undefined,
+        compressionRatio,
+      });
+    }
+    const inserted = await FileRecord.insertMany(out, { ordered: false });
+    res.json({ inserted: inserted.length });
+  } catch (e) {
+    console.error('Seed mock files error:', e);
+    res.status(500).json({ error: 'Failed seeding mock files' });
+  }
 });
 
 // @route   GET /api/admin/contacts
