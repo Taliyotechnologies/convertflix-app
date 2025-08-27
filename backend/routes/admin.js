@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const { getUsers, getSettings, saveSettings } = require('../utils/dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const { computeStats } = require('../utils/stats');
 const useMongo = () => {
   try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
 };
@@ -48,7 +49,18 @@ async function requireAdmin(req, res, next) {
   }
 }
 
-// Stats endpoint removed (Dashboard page removed)
+// @route   GET /api/admin/stats
+// @desc    Get dashboard stats
+// @access  Private (Admin)
+router.get('/stats', auth, requireAdmin, async (req, res) => {
+  try {
+    const stats = await computeStats();
+    res.json(stats);
+  } catch (e) {
+    console.error('Get admin stats error:', e);
+    res.status(500).json({ error: 'Server error getting admin stats' });
+  }
+});
 
 // @route   GET /api/admin/stream
 // @desc    SSE removed (no admin pages rely on it)

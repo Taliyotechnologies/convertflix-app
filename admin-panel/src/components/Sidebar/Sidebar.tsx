@@ -4,7 +4,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  LayoutDashboard
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from './Sidebar.module.css';
@@ -15,6 +16,7 @@ const Sidebar: React.FC = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const navigation = [
+    { path: '/dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { path: '/settings', name: 'Settings', icon: Settings },
   ];
 

@@ -1,4 +1,4 @@
-import type { AdminSettings } from '../types';
+import type { AdminSettings, DashboardStats } from '../types';
 
 const BASE: string = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
@@ -50,4 +50,8 @@ export async function updateAdminSettings(payload: Partial<AdminSettings>): Prom
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+}
+
+export async function getAdminStats(): Promise<DashboardStats> {
+  return request<DashboardStats>('/admin/stats');
 }
