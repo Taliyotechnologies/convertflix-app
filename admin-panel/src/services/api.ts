@@ -1,4 +1,4 @@
-import type { AdminSettings, DashboardStats } from '../types';
+import type { AdminSettings, DashboardStats, ContactMessage } from '../types';
 
 const BASE: string = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
@@ -54,4 +54,17 @@ export async function updateAdminSettings(payload: Partial<AdminSettings>): Prom
 
 export async function getAdminStats(): Promise<DashboardStats> {
   return request<DashboardStats>('/admin/stats');
+}
+
+// Contacts
+export async function getContacts(): Promise<ContactMessage[]> {
+  return request<ContactMessage[]>('/admin/contacts');
+}
+
+export async function updateContactMessage(id: string, patch: Partial<ContactMessage>): Promise<ContactMessage> {
+  return request<ContactMessage>(`/admin/contacts/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch || {}),
+  });
 }

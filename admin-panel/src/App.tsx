@@ -5,6 +5,7 @@ import Header from './components/Header/Header';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Analytics from './pages/Analytics/Analytics';
 import Settings from './pages/Settings/Settings';
+import Contacts from './pages/Contacts/Contacts';
 import Login from './pages/Login/Login';
 import ForgotPassword from './pages/Auth/ForgotPassword.tsx';
 import ResetPassword from './pages/Auth/ResetPassword.tsx';
@@ -70,6 +71,7 @@ const AppContent: React.FC = () => {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/contacts" element={<Contacts />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

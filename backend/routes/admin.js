@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { getUsers, getSettings, saveSettings } = require('../utils/dataStore');
+const { getUsers, getSettings, saveSettings, getContacts, updateContact } = require('../utils/dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const { computeStats } = require('../utils/stats');
@@ -114,6 +114,41 @@ router.delete('/files/:id', auth, requireAdmin, async (req, res) => {
   return res.status(410).json({ error: 'Files API removed' });
 });
 
-// Contacts endpoints removed (Contacts page removed)
+// @route   GET /api/admin/contacts
+// @desc    List contact messages (most recent first)
+// @access  Private (Admin)
+router.get('/contacts', auth, requireAdmin, async (req, res) => {
+  try {
+    const list = await getContacts();
+    // Ensure newest first
+    const sorted = (list || []).slice().sort((a, b) => {
+      try {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } catch (_) {
+        return 0;
+      }
+    });
+    res.json(sorted);
+  } catch (e) {
+    console.error('Get contacts error:', e);
+    res.status(500).json({ error: 'Server error getting contacts' });
+  }
+});
+
+// @route   PUT /api/admin/contacts/:id
+// @desc    Update a contact message (status/read/resolved/subject/message)
+// @access  Private (Admin)
+router.put('/contacts/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { status, read, resolved, subject, message } = req.body || {};
+    const updated = await updateContact(id, { status, read, resolved, subject, message });
+    res.json(updated);
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : 'Failed to update contact';
+    const code = msg.includes('not found') ? 404 : 500;
+    res.status(code).json({ error: msg });
+  }
+});
 
 module.exports = router;

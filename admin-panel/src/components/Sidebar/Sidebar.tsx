@@ -6,7 +6,8 @@ import {
   Menu,
   X,
   LayoutDashboard,
-  LineChart
+  LineChart,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import styles from './Sidebar.module.css';
@@ -19,6 +20,7 @@ const Sidebar: React.FC = () => {
   const navigation = [
     { path: '/dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { path: '/analytics', name: 'Analytics', icon: LineChart },
+    { path: '/contacts', name: 'Contacts', icon: Mail },
     { path: '/settings', name: 'Settings', icon: Settings },
   ];
 
