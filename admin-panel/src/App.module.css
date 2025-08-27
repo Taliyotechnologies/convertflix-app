@@ -20,6 +20,11 @@
   flex: 1;
   overflow-y: auto;
   background-color: var(--bg-secondary);
+  /* Global page gutters and readable width */
+  padding: 1.25rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 /* Centered layout for Loading / Access Denied screens */
@@ -35,10 +40,17 @@
   .mainContent {
     margin-left: 0; /* Sidebar is hidden on mobile */
   }
+  .content {
+    padding: 1rem;
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
   .mainContent {
     margin-left: 0;
+  }
+  .content {
+    padding: 0.75rem;
   }
 }

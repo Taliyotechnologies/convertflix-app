@@ -21,6 +21,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .button {
@@ -76,6 +77,15 @@
   .grid { grid-template-columns: 1fr; }
 }
 
+/* Tablet adjustments */
+@media (max-width: 768px) {
+  .container { gap: 0.75rem; }
+  .kpis { gap: 0.75rem; }
+  .grid { gap: 0.75rem; }
+  .card { padding: 0.875rem; }
+  .panel { padding: 0.875rem; }
+}
+
 .panel {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -98,6 +108,12 @@
 
 @media (max-width: 700px) {
   .smallGrid { grid-template-columns: 1fr; }
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .button { width: 100%; justify-content: center; }
+  .actions { width: 100%; justify-content: flex-end; }
 }
 
 .list {
