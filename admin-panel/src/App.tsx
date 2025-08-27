@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar/Sidebar';
 import Header from './components/Header/Header';
 import Dashboard from './pages/Dashboard/Dashboard';
+import Analytics from './pages/Analytics/Analytics';
 import Settings from './pages/Settings/Settings';
 import Login from './pages/Login/Login';
 import ForgotPassword from './pages/Auth/ForgotPassword.tsx';
@@ -68,6 +69,7 @@ const AppContent: React.FC = () => {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
