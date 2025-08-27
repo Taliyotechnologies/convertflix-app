@@ -1,16 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { 
   Search, 
-  Bell, 
-  User, 
   Settings,
   LogOut,
   Sun,
   Moon
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { subscribeSSE } from '../../services/realtime';
-import { getAdminSettings } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import styles from './Header.module.css';
 import { generateAvatar } from '../../utils/avatar';
@@ -25,51 +21,6 @@ const Header: React.FC = () => {
     }
     return 'light';
   });
-  const [unread, setUnread] = useState(0);
-  const [adminEnabled, setAdminEnabled] = useState<boolean>(true);
-  const adminEnabledRef = useRef<boolean>(true);
-
-  useEffect(() => {
-    adminEnabledRef.current = adminEnabled;
-  }, [adminEnabled]);
-
-  // Fetch initial settings and listen for runtime updates from Settings page
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const s = await getAdminSettings();
-        if (!alive) return;
-        setAdminEnabled(!!s.adminNotifications);
-      } catch {}
-    })();
-
-    const onSettingsUpdated = (e: Event) => {
-      try {
-        const anyEvt = e as CustomEvent<any>;
-        const s = anyEvt?.detail;
-        if (s && typeof s.adminNotifications === 'boolean') {
-          setAdminEnabled(!!s.adminNotifications);
-          if (!s.adminNotifications) setUnread(0);
-        }
-      } catch {}
-    };
-    try { window.addEventListener('settings:updated', onSettingsUpdated); } catch {}
-    return () => {
-      alive = false;
-      try { window.removeEventListener('settings:updated', onSettingsUpdated); } catch {}
-    };
-  }, []);
-
-  // Subscribe to realtime SSE for activity events
-  useEffect(() => {
-    const unsubscribe = subscribeSSE({
-      onActivity: () => {
-        setUnread((prev) => (adminEnabledRef.current ? prev + 1 : 0));
-      }
-    });
-    return () => { try { unsubscribe(); } catch {} };
-  }, []);
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -81,11 +32,6 @@ const Header: React.FC = () => {
   const handleLogout = () => {
     logout();
     setShowDropdown(false);
-  };
-
-  const handleNotificationsClick = () => {
-    setUnread(0);
-    try { navigate('/analytics'); } catch {}
   };
 
   return (
@@ -106,18 +52,6 @@ const Header: React.FC = () => {
           {/* Theme Toggle */}
           <button className={styles.iconButton} onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme">
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          {/* Notifications */}
-          <button 
-            className={styles.iconButton}
-            onClick={handleNotificationsClick}
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            <Bell size={20} />
-            {adminEnabled && unread > 0 && (
-              <span className={styles.notificationBadge}>{unread}</span>
-            )}
           </button>
 
           {/* Profile Dropdown */}
@@ -144,13 +78,6 @@ const Header: React.FC = () => {
                   <span className={styles.dropdownEmail}>{user?.email || 'admin@example.com'}</span>
                 </div>
                 <div className={styles.dropdownDivider} />
-                <button
-                  className={styles.dropdownItem}
-                  onClick={() => { try { navigate('/users'); } catch {}; setShowDropdown(false); }}
-                >
-                  <User size={16} />
-                  Profile
-                </button>
                 <button
                   className={styles.dropdownItem}
                   onClick={() => { try { navigate('/settings'); } catch {}; setShowDropdown(false); }}

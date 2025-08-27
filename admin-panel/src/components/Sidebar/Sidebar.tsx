@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
-  Users, 
-  FileText, 
   Settings, 
-  BarChart3,
-  Mail,
   LogOut,
   Menu,
   X
@@ -20,11 +15,6 @@ const Sidebar: React.FC = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const navigation = [
-    { path: '/dashboard', name: 'Dashboard', icon: LayoutDashboard },
-    { path: '/analytics', name: 'Analytics', icon: BarChart3 },
-    { path: '/users', name: 'Users', icon: Users },
-    { path: '/contacts', name: 'Contacts', icon: Mail },
-    { path: '/files', name: 'Files', icon: FileText },
     { path: '/settings', name: 'Settings', icon: Settings },
   ];
 
@@ -54,7 +44,7 @@ const Sidebar: React.FC = () => {
           {/* Logo */}
           <div className={styles.logo}>
             <div className={styles.logoIcon}>
-              <LayoutDashboard size={24} />
+              <Settings size={24} />
             </div>
             <span className={styles.logoText}>ConvertFlix Admin</span>
           </div>

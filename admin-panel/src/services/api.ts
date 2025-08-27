@@ -1,4 +1,4 @@
-import type { DashboardStats, FileRecord, ActivityLog, User, AdminSettings, ContactMessage } from '../types';
+import type { AdminSettings } from '../types';
 
 const BASE: string = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
@@ -40,47 +40,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
-async function requestOk(path: string, init?: RequestInit): Promise<boolean> {
-  const token = localStorage.getItem('adminToken');
-  const baseHeaders: Record<string, string> = { 'Accept': 'application/json' };
-  if (token) baseHeaders['Authorization'] = `Bearer ${token}`;
-  const mergedHeaders = { ...baseHeaders, ...normalizeHeaders(init?.headers) };
-  const res = await fetch(BASE + path, { ...(init || {}), headers: mergedHeaders });
-  if (!res.ok) {
-    if (res.status === 401 || res.status === 403) emitUnauthorized();
-    const text = await res.text().catch(() => '');
-    throw new Error(`API ${path} failed: ${res.status} ${res.statusText} ${text}`);
-  }
-  return true;
-}
-
-export async function getStats(): Promise<DashboardStats> {
-  return request<DashboardStats>('/admin/stats');
-}
-
-export async function getFiles(limit?: number): Promise<FileRecord[]> {
-  const path = typeof limit === 'number' ? `/admin/files?limit=${limit}` : '/admin/files';
-  return request<FileRecord[]>(path);
-}
-
-export async function getActivity(params?: { since?: string; limit?: number; severity?: 'info' | 'error' | 'warning' }): Promise<ActivityLog[]> {
-  const qs = new URLSearchParams();
-  if (params?.since) qs.set('since', params.since);
-  if (params?.limit) qs.set('limit', String(params.limit));
-  if (params?.severity) qs.set('severity', params.severity);
-  const path = '/admin/activity' + (qs.toString() ? `?${qs.toString()}` : '');
-  return request<ActivityLog[]>(path);
-}
-
-export async function getUsers(params?: { status?: 'active' | 'inactive'; q?: string; limit?: number }): Promise<User[]> {
-  const qs = new URLSearchParams();
-  if (params?.status) qs.set('status', params.status);
-  if (params?.q) qs.set('q', params.q);
-  if (params?.limit) qs.set('limit', String(params.limit));
-  const path = '/admin/users' + (qs.toString() ? `?${qs.toString()}` : '');
-  return request<User[]>(path);
-}
-
 export async function getAdminSettings(): Promise<AdminSettings> {
   return request<AdminSettings>('/admin/settings');
 }
@@ -90,46 +49,5 @@ export async function updateAdminSettings(payload: Partial<AdminSettings>): Prom
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  });
-}
-
-export async function deleteFile(id: string): Promise<boolean> {
-  return requestOk(`/admin/files/${encodeURIComponent(id)}`, { method: 'DELETE' });
-}
-
-export async function createUser(payload: { email: string; password: string; name: string; role?: 'admin' | 'sub-admin' | 'user' }): Promise<User> {
-  return request<User>('/users', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function deleteUser(id: string): Promise<boolean> {
-  return requestOk(`/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
-}
-
-export async function resetUserPassword(id: string): Promise<{ success: boolean; tempPassword?: string }> {
-  return request<{ success: boolean; tempPassword?: string }>(`/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST' });
-}
-
-// Contacts (Admin)
-export async function getContacts(params?: { status?: 'new' | 'read' | 'resolved'; q?: string; limit?: number }): Promise<ContactMessage[]> {
-  const qs = new URLSearchParams();
-  if (params?.status) qs.set('status', params.status);
-  if (params?.q) qs.set('q', params.q);
-  if (params?.limit) qs.set('limit', String(params.limit));
-  const path = '/admin/contacts' + (qs.toString() ? `?${qs.toString()}` : '');
-  return request<ContactMessage[]>(path);
-}
-
-export async function updateContact(
-  id: string,
-  patch: Partial<Pick<ContactMessage, 'status' | 'read' | 'resolved' | 'subject' | 'message'>>
-): Promise<ContactMessage> {
-  return request<ContactMessage>(`/admin/contacts/${encodeURIComponent(id)}` ,{
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(patch),
   });
 }

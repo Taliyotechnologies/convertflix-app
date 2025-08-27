@@ -1,12 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
 const auth = require('../middleware/auth');
-const { getUsers, getSettings, saveSettings, getActivities, getContacts, updateContact } = require('../utils/dataStore');
-const realtime = require('../utils/realtime');
-const { computeStats } = require('../utils/stats');
-const { listFiles } = require('../utils/files');
+const { getUsers, getSettings, saveSettings } = require('../utils/dataStore');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const useMongo = () => {
@@ -53,351 +48,25 @@ async function requireAdmin(req, res, next) {
   }
 }
 
-// @route   GET /api/admin/stats
-// @desc    Get dashboard statistics
-// @access  Private (Admin)
-router.get('/stats', auth, requireAdmin, async (req, res) => {
-  try {
-    const stats = await computeStats();
-    res.json(stats);
-  } catch (error) {
-    console.error('Get admin stats error:', error);
-    res.status(500).json({ error: 'Server error getting admin stats' });
-  }
-});
+// Stats endpoint removed (Dashboard page removed)
 
 // @route   GET /api/admin/stream
-// @desc    SSE stream for realtime admin updates
+// @desc    SSE removed (no admin pages rely on it)
 // @access  Private (Admin)
 router.get('/stream', auth, requireAdmin, async (req, res) => {
-  // SSE headers
-  res.set({
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
-  });
-  if (typeof res.flushHeaders === 'function') {
-    try { res.flushHeaders(); } catch (_) {}
-  }
-
-  const send = (eventName, payload) => {
-    try {
-      res.write(`event: ${eventName}\n`);
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    } catch (_) {}
-  };
-
-  // Initial snapshots
-  try {
-    const settings = await getSettings().catch(() => ({}));
-    const notificationsEnabled = ((settings && typeof settings.adminNotifications !== 'boolean') || settings.adminNotifications);
-    const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
-    const [stats, activities, files, contacts] = await Promise.all([
-      computeStats().catch(() => null),
-      getActivities().catch(() => []),
-      Promise.resolve(listFiles(500, retentionDays)).catch(() => []),
-      getContacts().catch(() => [])
-    ]);
-    if (stats) send('stats', stats);
-    if (notificationsEnabled && Array.isArray(activities)) {
-      const ordered = activities.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 50);
-      send('activities', ordered);
-    }
-    if (Array.isArray(files)) send('files', files);
-    if (Array.isArray(contacts)) {
-      const orderedContacts = contacts.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 200);
-      send('contacts', orderedContacts);
-    }
-    // Initial latest users snapshot (top 50 newest)
-    try {
-      let latestUsers = [];
-      if (useMongo()) {
-        const docs = await User.find({}).sort({ createdAt: -1 }).limit(50).lean();
-        latestUsers = (docs || []).map(u => ({
-          id: u._id.toString(),
-          email: u.email,
-          name: u.fullName || '',
-          role: normalizeRole(u.role),
-          createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-          lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-          status: u.status || 'active',
-          avatar: u.avatar
-        }));
-      } else {
-        const list = await getUsers();
-        latestUsers = (list || [])
-          .slice()
-          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-          .slice(0, 50)
-          .map(u => ({
-            id: u.id,
-            email: u.email,
-            name: u.name || u.fullName || '',
-            role: normalizeRole(u.role),
-            createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-            lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-            status: u.status || 'active',
-            avatar: u.avatar
-          }));
-      }
-      send('users', latestUsers);
-    } catch (_) {}
-  } catch (_) {}
-
-  // Heartbeat to keep connection alive
-  const heartbeat = setInterval(() => {
-    try { res.write(': ping\n\n'); } catch (_) {}
-  }, 20000);
-
-  // Periodic updates
-  const periodic = setInterval(async () => {
-    try {
-      const s = await computeStats();
-      send('stats', s);
-      const settings = await getSettings().catch(() => ({}));
-      const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
-      send('files', listFiles(500, retentionDays));
-      // Periodically refresh latest users as a fallback
-      try {
-        let latest = [];
-        if (useMongo()) {
-          const docs = await User.find({}).sort({ createdAt: -1 }).limit(50).lean();
-          latest = (docs || []).map(u => ({
-            id: u._id.toString(),
-            email: u.email,
-            name: u.fullName || '',
-            role: normalizeRole(u.role),
-            createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-            lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-            status: u.status || 'active',
-            avatar: u.avatar
-          }));
-        } else {
-          const list = await getUsers();
-          latest = (list || [])
-            .slice()
-            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-            .slice(0, 50)
-            .map(u => ({
-              id: u.id,
-              email: u.email,
-              name: u.name || u.fullName || '',
-              role: normalizeRole(u.role),
-              createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-              lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-              status: u.status || 'active',
-              avatar: u.avatar
-            }));
-        }
-        send('users', latest);
-      } catch (_) {}
-    } catch (_) {}
-  }, 10000);
-
-  // Live activities
-  let activitySubscribed = false;
-  const onActivity = (activity) => {
-    send('activity', activity);
-  };
-  try {
-    const s = await getSettings().catch(() => ({}));
-    const liveEnabled = ((s && typeof s.adminNotifications !== 'boolean') || s.adminNotifications);
-    if (liveEnabled) {
-      realtime.on('activity', onActivity);
-      activitySubscribed = true;
-    }
-  } catch (_) {}
-
-  // Live metrics -> recompute and send stats
-  const onMetrics = async () => {
-    try {
-      const s = await computeStats();
-      send('stats', s);
-    } catch (_) {}
-  };
-  realtime.on('stats_metrics_updated', onMetrics);
-
-  // Live files -> send updated list
-  const onFilesUpdated = async () => {
-    try {
-      const settings = await getSettings().catch(() => ({}));
-      const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
-      send('files', listFiles(500, retentionDays));
-    } catch (_) {}
-  };
-  realtime.on('files_updated', onFilesUpdated);
-
-  // Live contacts -> send single upsert and/or refreshed list
-  const onContact = (c) => {
-    try { send('contact', c); } catch (_) {}
-  };
-  const onContactsUpdated = async () => {
-    try {
-      const list = await getContacts().catch(() => []);
-      const ordered = (list || []).slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 200);
-      send('contacts', ordered);
-    } catch (_) {}
-  };
-  realtime.on('contact', onContact);
-  realtime.on('contacts_updated', onContactsUpdated);
-
-  // Live users -> send latest list
-  const onUsersUpdated = async () => {
-    try {
-      let latest = [];
-      if (useMongo()) {
-        const docs = await User.find({}).sort({ createdAt: -1 }).limit(50).lean();
-        latest = (docs || []).map(u => ({
-          id: u._id.toString(),
-          email: u.email,
-          name: u.fullName || '',
-          role: normalizeRole(u.role),
-          createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-          lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-          status: u.status || 'active',
-          avatar: u.avatar
-        }));
-      } else {
-        const list = await getUsers();
-        latest = (list || [])
-          .slice()
-          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-          .slice(0, 50)
-          .map(u => ({
-            id: u.id,
-            email: u.email,
-            name: u.name || u.fullName || '',
-            role: normalizeRole(u.role),
-            createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-            lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-            status: u.status || 'active',
-            avatar: u.avatar
-          }));
-      }
-      send('users', latest);
-    } catch (_) {}
-  };
-  realtime.on('users_updated', onUsersUpdated);
-
-  req.on('close', () => {
-    clearInterval(heartbeat);
-    clearInterval(periodic);
-    if (activitySubscribed) {
-      try { realtime.off ? realtime.off('activity', onActivity) : realtime.removeListener('activity', onActivity); } catch (_) {}
-    }
-    try { realtime.off ? realtime.off('stats_metrics_updated', onMetrics) : realtime.removeListener('stats_metrics_updated', onMetrics); } catch (_) {}
-    try { realtime.off ? realtime.off('files_updated', onFilesUpdated) : realtime.removeListener('files_updated', onFilesUpdated); } catch (_) {}
-    try { realtime.off ? realtime.off('contact', onContact) : realtime.removeListener('contact', onContact); } catch (_) {}
-    try { realtime.off ? realtime.off('contacts_updated', onContactsUpdated) : realtime.removeListener('contacts_updated', onContactsUpdated); } catch (_) {}
-    try { realtime.off ? realtime.off('users_updated', onUsersUpdated) : realtime.removeListener('users_updated', onUsersUpdated); } catch (_) {}
-    try { res.end(); } catch (_) {}
-  });
+  return res.status(410).json({ error: 'SSE removed' });
 });
 
 // @route   GET /api/admin/files
-// @desc    Get all files with details
+// @desc    Removed (Files page removed)
 // @access  Private (Admin)
 router.get('/files', auth, requireAdmin, async (req, res) => {
-  try {
-    const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
-    const settings = await getSettings().catch(() => ({}));
-    const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
-    const files = listFiles(limit, retentionDays);
-    res.json(files);
-  } catch (error) {
-    console.error('Get admin files error:', error);
-    res.status(500).json({ error: 'Server error getting admin files' });
-  }
+  return res.status(410).json({ error: 'Files API removed' });
 });
 
-// @route   GET /api/admin/activity
-// @desc    Get activity logs
-// @access  Private (Admin)
-router.get('/activity', auth, requireAdmin, async (req, res) => {
-  try {
-    const { limit = 20, since, severity } = req.query;
-    let activities = await getActivities();
+// Activity endpoint removed (Analytics page removed)
 
-    if (since) {
-      const sinceTs = new Date(since).getTime();
-      if (!Number.isNaN(sinceTs)) {
-        activities = activities.filter(a => new Date(a.timestamp).getTime() > sinceTs);
-      }
-    }
-    if (severity) {
-      activities = activities.filter(a => (a.severity || 'info') === severity);
-    }
-
-    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    const lim = parseInt(limit);
-    const limited = Number.isNaN(lim) ? activities : activities.slice(0, lim);
-    res.json(limited);
-  } catch (error) {
-    console.error('Get admin activity error:', error);
-    res.status(500).json({ error: 'Server error getting admin activity' });
-  }
-});
-
-// @route   GET /api/admin/users
-// @desc    Get all users
-// @access  Private (Admin)
-router.get('/users', auth, requireAdmin, async (req, res) => {
-  try {
-    const { status, q, limit = 50 } = req.query;
-
-    if (useMongo()) {
-      const query = {};
-      if (status) query.status = status;
-      if (q) {
-        const rx = new RegExp(q.toString(), 'i');
-        query.$or = [{ fullName: rx }, { email: rx }];
-      }
-      const lim = parseInt(limit);
-      const docs = await User.find(query).sort({ createdAt: -1 }).limit(Number.isNaN(lim) ? 0 : lim).lean();
-      const mapped = (docs || []).map(u => ({
-        id: u._id.toString(),
-        email: u.email,
-        name: u.fullName || '',
-        role: normalizeRole(u.role),
-        createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-        lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-        status: u.status || 'active',
-        avatar: u.avatar
-      }));
-      return res.json(mapped);
-    } else {
-      const list = await getUsers();
-      let filtered = (list || []).map(u => ({
-        id: u.id,
-        email: u.email,
-        name: u.name || u.fullName || '',
-        role: normalizeRole(u.role),
-        createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
-        lastLogin: u.lastLogin ? new Date(u.lastLogin).toISOString() : new Date(0).toISOString(),
-        status: u.status || 'active',
-        avatar: u.avatar
-      }));
-
-      if (status) filtered = filtered.filter(u => (u.status || 'active') === status);
-      if (q) {
-        const ql = q.toString().toLowerCase();
-        filtered = filtered.filter(u =>
-          (u.name || '').toLowerCase().includes(ql) ||
-          (u.email || '').toLowerCase().includes(ql)
-        );
-      }
-
-      // Sort by newest first
-      filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-      const lim = parseInt(limit);
-      const result = Number.isNaN(lim) ? filtered : filtered.slice(0, lim);
-      res.json(result);
-    }
-  } catch (error) {
-    console.error('Get admin users error:', error);
-    res.status(500).json({ error: 'Server error getting admin users' });
-  }
-});
+// Users listing endpoint removed (Users page removed)
 
 // @route   GET /api/admin/settings
 // @desc    Get admin settings
@@ -427,82 +96,12 @@ router.put('/settings', auth, requireAdmin, async (req, res) => {
 });
 
 // @route   DELETE /api/admin/files/:id
-// @desc    Delete a file
+// @desc    Removed (Files page removed)
 // @access  Private (Admin)
 router.delete('/files/:id', auth, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const idx = parseInt(id) - 1;
-    if (Number.isNaN(idx) || idx < 0) return res.status(400).json({ error: 'Invalid file id' });
-
-    const settings = await getSettings().catch(() => ({}));
-    const retentionDays = Number(settings && settings.autoDeleteDays) || 7;
-    const files = listFiles(10000, retentionDays); // filtered to last retention days
-    const rec = files[idx];
-    if (!rec) return res.status(404).json({ error: 'File not found' });
-
-    const filePath = path.join(__dirname, '../uploads', rec.name);
-    try {
-      fs.unlinkSync(filePath);
-    } catch (e) {
-      return res.status(500).json({ error: 'Failed to delete file' });
-    }
-
-    try { realtime.emit('files_updated', { deleted: [rec.name] }); } catch (_) {}
-    res.json({ success: true, message: 'File deleted successfully' });
-  } catch (error) {
-    console.error('Delete file error:', error);
-    res.status(500).json({ error: 'Server error deleting file' });
-  }
+  return res.status(410).json({ error: 'Files API removed' });
 });
 
-// @route   GET /api/admin/contacts
-// @desc    List contact messages
-// @access  Private (Admin)
-router.get('/contacts', auth, requireAdmin, async (req, res) => {
-  try {
-    const { status, q, limit } = req.query;
-    let list = await getContacts();
-
-    if (status) {
-      const st = String(status);
-      list = list.filter(c => (c.status || 'new') === st);
-    }
-    if (q) {
-      const ql = String(q).toLowerCase();
-      list = list.filter(c =>
-        (c.name || '').toLowerCase().includes(ql) ||
-        (c.email || '').toLowerCase().includes(ql) ||
-        (c.subject || '').toLowerCase().includes(ql) ||
-        (c.message || '').toLowerCase().includes(ql)
-      );
-    }
-
-    list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    const lim = limit ? parseInt(limit) : undefined;
-    const result = (typeof lim === 'number' && !Number.isNaN(lim)) ? list.slice(0, lim) : list;
-    res.json(result);
-  } catch (error) {
-    console.error('Get admin contacts error:', error);
-    res.status(500).json({ error: 'Server error getting admin contacts' });
-  }
-});
-
-// @route   PATCH /api/admin/contacts/:id
-// @desc    Update a contact message fields (status/read/resolved/subject/message)
-// @access  Private (Admin)
-router.patch('/contacts/:id', auth, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const patch = req.body || {};
-    const updated = await updateContact(id, patch);
-    res.json(updated);
-  } catch (error) {
-    const msg = (error && error.message) ? error.message : 'Server error updating contact';
-    const code = msg.includes('not found') ? 404 : 500;
-    console.error('Update admin contact error:', error);
-    res.status(code).json({ error: msg });
-  }
-});
+// Contacts endpoints removed (Contacts page removed)
 
 module.exports = router;
