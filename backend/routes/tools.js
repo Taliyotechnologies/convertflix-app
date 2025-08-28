@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { uploadImage, uploadVideo, uploadAudio, uploadPDF, uploadAny } = require('../middleware/upload');
 const { addActivity, recordFileProcessed } = require('../utils/dataStore');
+const mongoose = require('mongoose');
+const FileRecord = require('../models/FileRecord');
+const jwt = require('jsonwebtoken');
 // Concurrency limiter and memory-conscious global configs
 const { createLimiter } = require('../utils/limiter');
 const MAX_CONCURRENT_JOBS = Number(process.env.MAX_CONCURRENT_JOBS || process.env.TOOLS_MAX_CONCURRENCY || 2);
@@ -53,6 +56,29 @@ function memSnapshot() {
     return { rssMB: 0, heapUsedMB: 0, heapTotalMB: 0, extMB: 0, abMB: 0 };
   }
 }
+
+// Optional auth: decode JWT if present; do NOT require auth for tools endpoints
+function optionalAuth(req, _res, next) {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.header('x-auth-token') || req.query?.token;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production');
+        req.user = decoded;
+      } catch (_) {
+        // ignore invalid token; remain anonymous
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+  next();
+}
+
+// Mongo helper: only write FileRecord if Mongo is connected
+const useMongo = () => {
+  try { return mongoose.connection && mongoose.connection.readyState === 1; } catch (_) { return false; }
+};
 
 // @route   POST /api/tools/compress-image
 // @desc    Compress image file
@@ -107,7 +133,7 @@ router.get('/convert-pdf', (req, res) => {
   });
 });
 
-router.post('/compress-image', uploadImage, async (req, res) => {
+router.post('/compress-image', optionalAuth, uploadImage, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No image file uploaded' });
@@ -260,6 +286,29 @@ router.post('/compress-image', uploadImage, async (req, res) => {
         });
       } catch (_) {}
 
+      // Persist FileRecord (Mongo only)
+      if (useMongo()) {
+        try {
+          const uploadedBy = (req.user && (req.user.userId || req.user.email)) ? (req.user.userId || req.user.email) : 'anonymous';
+          const originalFormat = (path.extname(req.file.originalname).slice(1) || '').toLowerCase();
+          const convertedFormat = (path.extname(finalPath).slice(1) || '').toLowerCase();
+          await FileRecord.create({
+            name: path.basename(finalPath),
+            type: 'image',
+            size: compressedSize,
+            status: 'completed',
+            uploadedBy,
+            uploadedAt: new Date(),
+            convertedAt: new Date(),
+            originalFormat: originalFormat || convertedFormat || 'bin',
+            convertedFormat: convertedFormat || undefined,
+            compressionRatio: originalSize > 0 ? (compressedSize / originalSize) : undefined,
+          });
+        } catch (e) {
+          console.warn('FileRecord create (image) error:', e && e.message ? e.message : e);
+        }
+      }
+
       res.json({
         success: true,
         message: 'Image compressed successfully',
@@ -278,7 +327,7 @@ router.post('/compress-image', uploadImage, async (req, res) => {
 // @route   POST /api/tools/compress-video
 // @desc    Compress video file
 // @access  Public
-router.post('/compress-video', uploadVideo, async (req, res) => {
+router.post('/compress-video', optionalAuth, uploadVideo, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No video file uploaded' });
@@ -393,6 +442,29 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
         });
       } catch (_) {}
 
+      // Persist FileRecord (Mongo only)
+      if (useMongo()) {
+        try {
+          const uploadedBy = (req.user && (req.user.userId || req.user.email)) ? (req.user.userId || req.user.email) : 'anonymous';
+          const originalFormat = (path.extname(req.file.originalname).slice(1) || '').toLowerCase();
+          const convertedFormat = (path.extname(deliveredPath).slice(1) || '').toLowerCase();
+          await FileRecord.create({
+            name: path.basename(deliveredPath),
+            type: 'video',
+            size: deliveredSize,
+            status: 'completed',
+            uploadedBy,
+            uploadedAt: new Date(),
+            convertedAt: new Date(),
+            originalFormat: originalFormat || convertedFormat || 'bin',
+            convertedFormat: convertedFormat || undefined,
+            compressionRatio: originalSize > 0 ? (deliveredSize / originalSize) : undefined,
+          });
+        } catch (e) {
+          console.warn('FileRecord create (video) error:', e && e.message ? e.message : e);
+        }
+      }
+
       res.json({
         success: true,
         message: 'Video compressed successfully',
@@ -411,7 +483,7 @@ router.post('/compress-video', uploadVideo, async (req, res) => {
 // @route   POST /api/tools/compress-audio
 // @desc    Compress audio file
 // @access  Public
-router.post('/compress-audio', uploadAudio, async (req, res) => {
+router.post('/compress-audio', optionalAuth, uploadAudio, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No audio file uploaded' });
@@ -489,6 +561,29 @@ router.post('/compress-audio', uploadAudio, async (req, res) => {
         });
       } catch (_) {}
 
+      // Persist FileRecord (Mongo only)
+      if (useMongo()) {
+        try {
+          const uploadedBy = (req.user && (req.user.userId || req.user.email)) ? (req.user.userId || req.user.email) : 'anonymous';
+          const originalFormat = (path.extname(req.file.originalname).slice(1) || '').toLowerCase();
+          const convertedFormat = (path.extname(finalPath).slice(1) || '').toLowerCase();
+          await FileRecord.create({
+            name: path.basename(finalPath),
+            type: 'audio',
+            size: compressedSize,
+            status: 'completed',
+            uploadedBy,
+            uploadedAt: new Date(),
+            convertedAt: new Date(),
+            originalFormat: originalFormat || convertedFormat || 'bin',
+            convertedFormat: convertedFormat || undefined,
+            compressionRatio: originalSize > 0 ? (compressedSize / originalSize) : undefined,
+          });
+        } catch (e) {
+          console.warn('FileRecord create (audio) error:', e && e.message ? e.message : e);
+        }
+      }
+
       res.json({
         success: true,
         message: 'Audio compressed successfully',
@@ -535,7 +630,7 @@ router.post('/convert-audio', uploadAudio, async (req, res) => {
 // @route   POST /api/tools/compress-pdf
 // @desc    Compress PDF file
 // @access  Public
-router.post('/compress-pdf', uploadPDF, async (req, res) => {
+router.post('/compress-pdf', optionalAuth, uploadPDF, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No PDF file uploaded' });
@@ -668,6 +763,29 @@ router.post('/compress-pdf', uploadPDF, async (req, res) => {
           meta: { originalSize, compressedSize, memStart, memEnd, elapsedMs }
         });
       } catch (_) {}
+
+      // Persist FileRecord (Mongo only)
+      if (useMongo()) {
+        try {
+          const uploadedBy = (req.user && (req.user.userId || req.user.email)) ? (req.user.userId || req.user.email) : 'anonymous';
+          const originalFormat = 'pdf';
+          const convertedFormat = (path.extname(workingPath).slice(1) || '').toLowerCase() || 'pdf';
+          await FileRecord.create({
+            name: path.basename(workingPath),
+            type: 'pdf',
+            size: compressedSize,
+            status: 'completed',
+            uploadedBy,
+            uploadedAt: new Date(),
+            convertedAt: new Date(),
+            originalFormat,
+            convertedFormat,
+            compressionRatio: originalSize > 0 ? (compressedSize / originalSize) : undefined,
+          });
+        } catch (e) {
+          console.warn('FileRecord create (pdf) error:', e && e.message ? e.message : e);
+        }
+      }
 
       res.json({
         success: true,
