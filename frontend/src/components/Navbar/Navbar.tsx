@@ -26,6 +26,8 @@ const Navbar: React.FC = () => {
 	const toolsCloseTimer = useRef<number | undefined>(undefined);
 	const companyOpenTimer = useRef<number | undefined>(undefined);
 	const companyCloseTimer = useRef<number | undefined>(undefined);
+	const profileOpenTimer = useRef<number | undefined>(undefined);
+	const profileCloseTimer = useRef<number | undefined>(undefined);
 
 	const scheduleOpen = (
 		setter: React.Dispatch<React.SetStateAction<boolean>>,
@@ -177,13 +179,22 @@ const Navbar: React.FC = () => {
         {/* Right Side */}
         <div className={styles.rightSection}>
           {/* Theme Toggle */}
-          <button className={styles.themeToggle} onClick={toggleTheme}>
+          <button
+            className={`${styles.themeToggle} ${theme === 'dark' ? styles.themeToggleDark : ''}`}
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+          >
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
 
           {/* Auth Section */}
           {user ? (
-            <div className={styles.profileDropdown} ref={profileDropdownRef}>
+            <div
+              className={styles.profileDropdown}
+              ref={profileDropdownRef}
+              onMouseEnter={() => scheduleOpen(setIsProfileDropdownOpen, profileOpenTimer, profileCloseTimer)}
+              onMouseLeave={() => scheduleClose(setIsProfileDropdownOpen, profileOpenTimer, profileCloseTimer)}
+            >
               <button
                 className={styles.profileButton}
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
@@ -195,7 +206,11 @@ const Navbar: React.FC = () => {
                 </span>
               </button>
               {isProfileDropdownOpen && (
-                <div className={styles.dropdownMenu}>
+                <div
+                  className={styles.dropdownMenu}
+                  onMouseEnter={() => scheduleOpen(setIsProfileDropdownOpen, profileOpenTimer, profileCloseTimer)}
+                  onMouseLeave={() => scheduleClose(setIsProfileDropdownOpen, profileOpenTimer, profileCloseTimer)}
+                >
                   <Link to="/profile">Profile</Link>
                   <Link to="/settings">Settings</Link>
                   <button onClick={handleLogout} className={styles.logoutButton}>

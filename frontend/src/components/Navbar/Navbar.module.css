@@ -186,6 +186,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   background-color: var(--control-bg);
+  color: var(--text-primary);
 }
 
 .themeToggle:hover {
@@ -197,6 +198,18 @@
 .themeToggle:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
+}
+
+/* Dark-mode enhanced style for theme button */
+.themeToggleDark {
+  background: linear-gradient(135deg, var(--button-start), var(--button-end));
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: var(--shadow-md);
+}
+
+.themeToggleDark:hover {
+  background: linear-gradient(135deg, var(--button-hover-start), var(--button-hover-end));
 }
 
 /* Auth Buttons */
