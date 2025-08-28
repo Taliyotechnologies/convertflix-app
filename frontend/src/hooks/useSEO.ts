@@ -40,7 +40,7 @@ export function useSEO({ title, description, keywords, path, image, noindex }: S
       .replace(/\/+$/, '');
     const pathStr = path || (typeof window !== 'undefined' ? window.location.pathname : '/');
     const url = base + (pathStr.startsWith('/') ? pathStr : `/${pathStr}`);
-    const rawImage = image || '/vite.svg';
+    const rawImage = image || '/icon-converter.svg';
     const absoluteImage = rawImage.startsWith('http') ? rawImage : `${base}${rawImage.startsWith('/') ? rawImage : `/${rawImage}`}`;
 
     if (title) document.title = title;

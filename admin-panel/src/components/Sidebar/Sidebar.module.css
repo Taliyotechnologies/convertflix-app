@@ -40,6 +40,15 @@
   color: white;
 }
 
+/* Ensure SVG logo is sized and readable on gradient */
+.logoIcon img {
+  width: 24px;
+  height: 24px;
+  display: block;
+  /* Turn colored strokes to white for better contrast on blue gradient */
+  filter: brightness(0) invert(1);
+}
+
 .logoText {
   font-size: 1.25rem;
   font-weight: 700;

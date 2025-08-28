@@ -52,7 +52,7 @@ const Sidebar: React.FC = () => {
           {/* Logo */}
           <div className={styles.logo}>
             <div className={styles.logoIcon}>
-              <Settings size={24} />
+              <img src="/icon-converter.svg" alt="ConvertFlix Admin" width={24} height={24} />
             </div>
             <span className={styles.logoText}>ConvertFlix Admin</span>
           </div>

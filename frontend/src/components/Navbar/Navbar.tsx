@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-  Film, 
   Moon, 
   Sun, 
   ChevronDown,
@@ -95,7 +94,7 @@ const Navbar: React.FC = () => {
         {/* Logo */}
         <Link to="/" className={styles.logo}>
           <span className={styles.logoIcon}>
-            <Film size={24} />
+            <img src="/icon-converter.svg" alt="ConvertFlix" width={24} height={24} />
           </span>
           <span className={styles.logoText}>ConvertFlix</span>
         </Link>

@@ -1,99 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://convertflix.vercel.app/</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/tools/compress-image</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/tools/compress-image</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/tools/compress-video</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/tools/compress-video</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/tools/compress-pdf</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/tools/compress-pdf</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/tools/compress-audio</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/tools/compress-audio</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/tools/convert-image</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/tools/convert-image</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/tools/convert-video</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/tools/convert-video</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/tools/convert-pdf</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/tools/convert-pdf</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/tools/convert-audio</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/tools/convert-audio</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/about</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/about</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/contact</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/owner</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/owner</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/terms</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/privacy</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/signup</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/signup</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
   <url>
-    <loc>https://convertflix.vercel.app/login</loc>
+    <loc>https://flixconvert.taliyotechnologies.com/login</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
-    <lastmod>2025-08-29</lastmod>
+    <lastmod>2025-08-28</lastmod>
   </url>
 </urlset>

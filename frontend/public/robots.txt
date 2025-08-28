@@ -2,4 +2,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://convertflix.vercel.app/sitemap.xml
+Sitemap: https://flixconvert.taliyotechnologies.com/sitemap.xml

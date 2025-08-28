@@ -32,6 +32,12 @@
   font-size: 2rem;
 }
 
+.logoIcon img {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
 .logoText {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   -webkit-background-clip: text;

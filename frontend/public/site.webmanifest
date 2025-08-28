@@ -7,6 +7,6 @@
   "theme_color": "#2563eb",
   "description": "Free online file compression and conversion tools by Taliyo Technologies.",
   "icons": [
-    { "src": "/vite.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    { "src": "/icon-converter.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

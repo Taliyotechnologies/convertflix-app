@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <!-- File/Tile outline -->
+  <rect x="6" y="6" width="52" height="52" rx="10" ry="10" stroke="#2563eb" stroke-width="3.5"/>
+
+  <!-- Circular convert arrows -->
+  <path d="M22 31.5c1.2-6.8 7.2-11.5 14-11.5 4.2 0 8.1 1.7 10.9 4.5" stroke="#2563eb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44.5 20.5h-7.5m7.5 0v7.5" stroke="#2563eb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <path d="M42 34c-1.2 6.8-7.2 11.5-14 11.5-4.1 0-7.9-1.6-10.7-4.2" stroke="#2563eb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M19.5 45.5h7.5m-7.5 0v-7.5" stroke="#2563eb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
