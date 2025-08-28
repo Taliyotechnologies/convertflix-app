@@ -28,10 +28,7 @@ function buildSSEUrl(): string | undefined {
   if (explicit) {
     return explicit + (token ? (explicit.includes('?') ? '&' : '?') + `token=${encodeURIComponent(token)}` : '');
   }
-  if (BASE) {
-    const url = BASE + '/admin/stream';
-    return url + (token ? `?token=${encodeURIComponent(token)}` : '');
-  }
+  // SSE backend support removed; do not fallback to BASE + '/admin/stream'
   return undefined;
 }
 

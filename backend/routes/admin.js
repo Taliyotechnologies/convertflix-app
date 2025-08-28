@@ -109,6 +109,7 @@ router.get('/files', auth, requireAdmin, async (req, res) => {
         convertedAt: d.convertedAt ? new Date(d.convertedAt).toISOString() : undefined,
         originalFormat: d.originalFormat,
         convertedFormat: d.convertedFormat,
+        downloadUrl: `/uploads/${d.name}`,
         compressionRatio: typeof d.compressionRatio === 'number' ? d.compressionRatio : undefined,
       }));
       return res.json(list);
@@ -121,6 +122,7 @@ router.get('/files', auth, requireAdmin, async (req, res) => {
         ...r,
         uploadedAt: new Date(r.uploadedAt).toISOString(),
         convertedAt: r.convertedAt ? new Date(r.convertedAt).toISOString() : undefined,
+        downloadUrl: `/uploads/${r.name}`,
       }));
     if (from || to) {
       const fromTs = from ? from.getTime() : 0;
