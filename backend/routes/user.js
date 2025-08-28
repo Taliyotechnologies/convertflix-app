@@ -176,14 +176,8 @@ router.get('/files', auth, async (req, res) => {
       return res.json({ success: true, files, total: files.length });
     }
 
-    // Fallback: list recent files from uploads dir (not user-specific)
-    const fsList = listFiles(limit, 30).map(r => ({
-      ...r,
-      uploadedAt: new Date(r.uploadedAt).toISOString(),
-      convertedAt: r.convertedAt ? new Date(r.convertedAt).toISOString() : undefined,
-      downloadUrl: `/uploads/${r.name}`,
-    }));
-    return res.json({ success: true, files: fsList, total: fsList.length });
+    // Fallback (no Mongo): return empty user-specific list
+    return res.json({ success: true, files: [], total: 0 });
   } catch (error) {
     console.error('Get files error:', error);
     res.status(500).json({ error: 'Server error getting files' });
@@ -277,11 +271,10 @@ router.get('/stats', auth, async (req, res) => {
       return res.json({ success: true, stats });
     }
 
-    // JSON fallback: global counters only
-    const m = await getMetrics();
+    // Fallback (no Mongo): return zeroed user stats
     const stats = {
-      totalFiles: Number(m.lifetimeFiles || 0),
-      totalStorage: Number(m.lifetimeBytes || 0),
+      totalFiles: 0,
+      totalStorage: 0,
       compressionSavings: 0,
       averageCompressionRatio: 0,
     };
