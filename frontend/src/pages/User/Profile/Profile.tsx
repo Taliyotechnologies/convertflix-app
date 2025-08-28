@@ -18,11 +18,9 @@ const Profile: React.FC = () => {
   const [files, setFiles] = useState<any[]>([]);
   const [loadingStats, setLoadingStats] = useState<boolean>(true);
   const [loadingFiles, setLoadingFiles] = useState<boolean>(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  
 
-  // API origin for static downloads (strip trailing /api)
-  const API_BASE: string = (import.meta as any)?.env?.VITE_API_BASE_URL || 'http://localhost:5000/api';
-  const API_ORIGIN: string = API_BASE.replace(/\/api\/?$/, '');
+  
 
   // Helpers to normalize backend variability
   const normalizeStats = (raw: any) => {
@@ -154,28 +152,7 @@ const Profile: React.FC = () => {
     fetchStats();
     fetchFiles();
   }, []);
-
-  const getDownloadUrl = (item: any) => {
-    const url: string | undefined = item?.downloadUrl;
-    if (!url) return undefined;
-    if (/^https?:\/\//i.test(url)) return url;
-    return `${API_ORIGIN}${url}`;
-  };
-
-  const onDeleteFile = async (id: string) => {
-    if (!id) return;
-    const ok = window.confirm('Delete this file from your history?');
-    if (!ok) return;
-    setDeletingId(id);
-    try {
-      await userAPI.deleteFile(id);
-      setFiles((prev) => prev.filter((f) => f.id !== id));
-    } catch (err: any) {
-      alert(err?.message || 'Failed to delete file');
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  
 
   return (
     <div className={styles.profilePage}>
@@ -297,49 +274,8 @@ const Profile: React.FC = () => {
                 <div className={styles.fileMain}>
                   <div className={styles.fileName}>{item.processedName || item.originalName || 'File'}</div>
                   <div className={styles.fileMeta}>
-                    <span className={styles.pill}>{String(item.fileType || 'file')}</span>
-                    <span>
-                      {formatFileSize(Number(item.processedSize ?? item.size ?? 0))}
-                      {(() => {
-                        const processed = Number(item.processedSize ?? item.size ?? 0);
-                        const ratio = typeof item.compressionRatio === 'number' ? Number(item.compressionRatio) : undefined;
-                        const original = Number(item.originalSize ?? (processed && ratio && ratio > 0 && ratio <= 1 ? processed / ratio : 0));
-                        const saved = original && processed ? Math.max(0, Math.round(original - processed)) : 0;
-                        return saved > 0 ? ` • Saved ${formatFileSize(saved)}` : '';
-                      })()}
-                    </span>
-                    {typeof item.compressionRatio === 'number' && (
-                      <span>
-                        • {(() => {
-                          const r = Number(item.compressionRatio);
-                          const pct = r > 0 && r <= 1 ? r * 100 : r; // backend ratio 0..1
-                          return `${pct.toFixed(1)}%`;
-                        })()}
-                      </span>
-                    )}
-                    {(item.createdAt || item.uploadedAt || item.convertedAt) && (
-                      <span>• {new Date(item.createdAt || item.uploadedAt || item.convertedAt).toLocaleString()}</span>
-                    )}
+                    <span>{formatFileSize(Number(item.processedSize ?? item.size ?? 0))}</span>
                   </div>
-                </div>
-                <div className={styles.fileActions}>
-                  {getDownloadUrl(item) && (
-                    <a
-                      className={`${styles.button} ${styles.secondary} ${styles.small}`}
-                      href={getDownloadUrl(item)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Download
-                    </a>
-                  )}
-                  <button
-                    className={`${styles.button} ${styles.secondary} ${styles.small} ${styles.danger}`}
-                    onClick={() => onDeleteFile(item.id)}
-                    disabled={deletingId === item.id}
-                  >
-                    {deletingId === item.id ? 'Deleting...' : 'Delete'}
-                  </button>
                 </div>
               </div>
             ))}

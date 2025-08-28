@@ -212,7 +212,7 @@
 
 .fileItem {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   gap: 12px;
   align-items: center;
   padding: 12px;
