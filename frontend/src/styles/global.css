@@ -6,8 +6,9 @@
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #64748b;
-  --accent-primary: #3b82f6;
-  --accent-secondary: #1d4ed8;
+  /* Violet/Indigo accents (light) */
+  --accent-primary: #7c3aed; /* violet-600 */
+  --accent-secondary: #4f46e5; /* indigo-600 */
   --accent-success: #10b981;
   --accent-warning: #f59e0b;
   --accent-error: #ef4444;
@@ -21,10 +22,18 @@
   --control-hover-bg: #e2e8f0;
   --control-border: #e2e8f0;
   --control-hover-border: #cbd5e1;
-  --button-start: #3b82f6;
-  --button-end: #1d4ed8;
-  --button-hover-start: #2563eb;
-  --button-hover-end: #1d4ed8;
+  --button-start: #8b5cf6; /* violet-500 */
+  --button-end: #6366f1;   /* indigo-500 */
+  --button-hover-start: #7c3aed; /* violet-600 */
+  --button-hover-end: #4f46e5;   /* indigo-600 */
+
+  /* Aliases used by CSS modules */
+  --surface: #ffffff;
+  --background: var(--bg-primary);
+  --text: var(--text-primary);
+  --muted: var(--text-muted);
+  --border: var(--border-color);
+  --primary: linear-gradient(90deg, var(--button-start), var(--button-end));
 }
 
 [data-theme="dark"] {
@@ -35,8 +44,9 @@
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
-  --accent-primary: #60a5fa;
-  --accent-secondary: #3b82f6;
+  /* Violet/Indigo accents (dark) */
+  --accent-primary: #a78bfa; /* violet-300 */
+  --accent-secondary: #818cf8; /* indigo-300 */
   --accent-success: #34d399;
   --accent-warning: #fbbf24;
   --accent-error: #f87171;
@@ -50,10 +60,18 @@
   --control-hover-bg: #475569;
   --control-border: #475569;
   --control-hover-border: #64748b;
-  --button-start: #60a5fa;
-  --button-end: #3b82f6;
-  --button-hover-start: #3b82f6;
-  --button-hover-end: #2563eb;
+  --button-start: #a78bfa; /* violet-300 */
+  --button-end: #818cf8;   /* indigo-300 */
+  --button-hover-start: #8b5cf6; /* violet-400 */
+  --button-hover-end: #6366f1;   /* indigo-400 */
+
+  /* Aliases used by CSS modules */
+  --surface: var(--bg-secondary);
+  --background: var(--bg-primary);
+  --text: var(--text-primary);
+  --muted: var(--text-muted);
+  --border: var(--border-color);
+  --primary: linear-gradient(90deg, var(--button-start), var(--button-end));
 }
 
 * {

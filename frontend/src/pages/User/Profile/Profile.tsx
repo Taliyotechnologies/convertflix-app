@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './Profile.module.css';
 import { useAuth } from '../../../contexts/AuthContext';
-import { userAPI } from '../../../services/api';
+import { userAPI, formatFileSize } from '../../../services/api';
 import { generateAvatar } from '../../../utils/avatar';
 
 const Profile: React.FC = () => {
@@ -12,6 +12,17 @@ const Profile: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  // New: Stats and Files state
+  const [stats, setStats] = useState<any | null>(null);
+  const [files, setFiles] = useState<any[]>([]);
+  const [loadingStats, setLoadingStats] = useState<boolean>(true);
+  const [loadingFiles, setLoadingFiles] = useState<boolean>(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // API origin for static downloads (strip trailing /api)
+  const API_BASE: string = (import.meta as any)?.env?.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  const API_ORIGIN: string = API_BASE.replace(/\/api\/?$/, '');
 
   if (isLoading) return null;
   if (!user) return null;
@@ -65,6 +76,59 @@ const Profile: React.FC = () => {
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       // no-op
+    }
+  };
+
+  // New: Load stats and files
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoadingStats(true);
+      try {
+        const res: any = await userAPI.getStats();
+        setStats(res?.stats ?? res ?? null);
+      } catch (err) {
+        setStats(null);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    const fetchFiles = async () => {
+      setLoadingFiles(true);
+      try {
+        const res: any = await userAPI.getFiles();
+        const list = res?.files ?? (Array.isArray(res) ? res : []);
+        setFiles(list);
+      } catch (err) {
+        setFiles([]);
+      } finally {
+        setLoadingFiles(false);
+      }
+    };
+
+    fetchStats();
+    fetchFiles();
+  }, []);
+
+  const getDownloadUrl = (item: any) => {
+    const url: string | undefined = item?.downloadUrl;
+    if (!url) return undefined;
+    if (/^https?:\/\//i.test(url)) return url;
+    return `${API_ORIGIN}${url}`;
+  };
+
+  const onDeleteFile = async (id: string) => {
+    if (!id) return;
+    const ok = window.confirm('Delete this file from your history?');
+    if (!ok) return;
+    setDeletingId(id);
+    try {
+      await userAPI.deleteFile(id);
+      setFiles((prev) => prev.filter((f) => f.id !== id));
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete file');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -143,6 +207,91 @@ const Profile: React.FC = () => {
             <div className={`${styles.helper} ${styles.statusError}`}>{errorMsg || 'Update failed'}</div>
           )}
         </form>
+      </div>
+
+      {/* Usage Stats */}
+      <div className={styles.card} style={{ marginTop: 16 }}>
+        <h2 className={styles.sectionTitle}>Usage Stats</h2>
+        {loadingStats ? (
+          <div className={styles.helper}>Loading stats...</div>
+        ) : !stats ? (
+          <div className={styles.helper}>No stats available.</div>
+        ) : (
+          <div className={styles.statsGrid}>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Total Files</div>
+              <div className={styles.statValue}>{stats.totalFiles ?? 0}</div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Total Storage</div>
+              <div className={styles.statValue}>{formatFileSize(Number(stats.totalStorage || 0))}</div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Compression Saved</div>
+              <div className={styles.statValue}>{formatFileSize(Number(stats.compressionSavings || 0))}</div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Avg Compression</div>
+              <div className={styles.statValue}>{Number(stats.averageCompressionRatio || 0).toFixed(1)}%</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Recent Files */}
+      <div className={styles.card} style={{ marginTop: 16 }}>
+        <h2 className={styles.sectionTitle}>Recent Files</h2>
+        {loadingFiles ? (
+          <div className={styles.helper}>Loading files...</div>
+        ) : files.length === 0 ? (
+          <div className={styles.helper}>No recent files yet.</div>
+        ) : (
+          <div className={styles.filesList}>
+            {files.map((item) => (
+              <div key={item.id} className={styles.fileItem}>
+                <div className={styles.fileMain}>
+                  <div className={styles.fileName}>{item.processedName || item.originalName}</div>
+                  <div className={styles.fileMeta}>
+                    <span className={styles.pill}>{String(item.fileType || item.type || 'file')}</span>
+                    <span>
+                      {formatFileSize(Number(item.processedSize || item.size || 0))}
+                      {item.originalSize
+                        ? ` • Saved ${formatFileSize(
+                            Math.max(0, Number(item.originalSize || 0) - Number(item.processedSize || 0))
+                          )}`
+                        : ''}
+                    </span>
+                    {item.compressionRatio !== undefined && (
+                      <span>• {Number(item.compressionRatio).toFixed(1)}%</span>
+                    )}
+                    {item.createdAt && (
+                      <span>• {new Date(item.createdAt).toLocaleString()}</span>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.fileActions}>
+                  {getDownloadUrl(item) && (
+                    <a
+                      className={`${styles.button} ${styles.secondary} ${styles.small}`}
+                      href={getDownloadUrl(item)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Download
+                    </a>
+                  )}
+                  <button
+                    className={`${styles.button} ${styles.secondary} ${styles.small} ${styles.danger}`}
+                    onClick={() => onDeleteFile(item.id)}
+                    disabled={deletingId === item.id}
+                  >
+                    {deletingId === item.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
