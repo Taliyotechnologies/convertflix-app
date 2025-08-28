@@ -92,6 +92,11 @@
   background-color: var(--control-hover-bg);
 }
 
+.dropdownToggle:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
 .dropdownArrow {
   font-size: 0.75rem;
   transition: transform 0.2s ease;
@@ -117,7 +122,8 @@
   transform: translateY(-10px);
   animation: dropdownFadeIn 0.2s ease forwards;
   z-index: 1001;
-  overflow: hidden;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 @keyframes dropdownFadeIn {
@@ -188,6 +194,11 @@
   transform: scale(1.05);
 }
 
+.themeToggle:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
 /* Auth Buttons */
 .authButtons {
   display: flex;
@@ -239,18 +250,23 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: none;
-  border: 1px solid var(--border-color);
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
   border-radius: 2rem;
   padding: 0.5rem 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: var(--bg-secondary);
+  background-color: var(--control-bg);
 }
 
 .profileButton:hover {
-  border-color: var(--accent-primary);
-  background-color: var(--bg-tertiary);
+  background-color: var(--control-hover-bg);
+  border-color: var(--control-hover-border);
+}
+
+.profileButton:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .avatar {
@@ -284,14 +300,16 @@
 /* Mobile Menu Button */
 .mobileMenuButton {
   display: none;
-  flex-direction: column;
-  justify-content: space-around;
-  width: 30px;
-  height: 30px;
-  background: none;
-  border: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  border-radius: 0.75rem;
   cursor: pointer;
   padding: 0;
+  transition: all 0.2s ease;
 }
 
 .hamburger {
@@ -300,6 +318,12 @@
   background-color: var(--text-primary);
   border-radius: 2px;
   transition: all 0.3s ease;
+}
+
+.mobileMenuButton:hover {
+  background: var(--control-hover-bg);
+  border-color: var(--control-hover-border);
+  transform: scale(1.03);
 }
 
 /* Mobile Menu */

@@ -24,6 +24,51 @@ const Profile: React.FC = () => {
   const API_BASE: string = (import.meta as any)?.env?.VITE_API_BASE_URL || 'http://localhost:5000/api';
   const API_ORIGIN: string = API_BASE.replace(/\/api\/?$/, '');
 
+  // Helpers to normalize backend variability
+  const normalizeStats = (raw: any) => {
+    if (!raw) return null;
+    const s = raw.stats ?? raw;
+    const totalFiles = Number(s.totalFiles ?? s.files ?? s.count ?? 0);
+    const totalStorage = Number(s.totalStorage ?? s.storage ?? s.totalSize ?? 0);
+    const compressionSavings = Number(s.compressionSavings ?? s.saved ?? s.totalSaved ?? 0);
+    let averageCompressionRatio = Number(
+      s.averageCompressionRatio ?? s.avgCompression ?? s.avgCompressionRatio ?? 0
+    );
+    // Backend stores ratio 0..1; convert to percentage value for display
+    if (averageCompressionRatio > 0 && averageCompressionRatio <= 1) {
+      averageCompressionRatio = averageCompressionRatio * 100;
+    }
+    return { totalFiles, totalStorage, compressionSavings, averageCompressionRatio };
+  };
+
+  const normalizeFile = (raw: any) => {
+    const id = raw?.id ?? raw?._id ?? raw?.fileId ?? raw?.uuid;
+    const processedSize =
+      raw?.processedSize ?? (typeof raw?.size === 'number' ? Number(raw.size) : undefined);
+    const ratio = typeof raw?.compressionRatio === 'number' ? Number(raw.compressionRatio) : undefined;
+    // If ratio is 0..1 and processed size known, estimate original size
+    const originalSize =
+      raw?.originalSize ??
+      (processedSize && ratio && ratio > 0 && ratio <= 1
+        ? Math.round(processedSize / ratio)
+        : undefined);
+    const fileType = String(raw?.fileType ?? raw?.type ?? 'file');
+    const createdAt = raw?.createdAt ?? raw?.uploadedAt ?? raw?.convertedAt;
+    const processedName = raw?.processedName ?? raw?.name ?? raw?.originalName;
+    const downloadUrl = raw?.downloadUrl ?? raw?.url ?? raw?.download ?? (id ? `/api/user/files/${id}/download` : undefined);
+    return {
+      ...raw,
+      id,
+      processedSize,
+      originalSize,
+      fileType,
+      createdAt,
+      processedName,
+      downloadUrl,
+      compressionRatio: ratio,
+    };
+  };
+
   if (isLoading) return null;
   if (!user) return null;
 
@@ -85,7 +130,7 @@ const Profile: React.FC = () => {
       setLoadingStats(true);
       try {
         const res: any = await userAPI.getStats();
-        setStats(res?.stats ?? res ?? null);
+        setStats(normalizeStats(res));
       } catch (err) {
         setStats(null);
       } finally {
@@ -98,7 +143,7 @@ const Profile: React.FC = () => {
       try {
         const res: any = await userAPI.getFiles();
         const list = res?.files ?? (Array.isArray(res) ? res : []);
-        setFiles(list);
+        setFiles(list.map(normalizeFile));
       } catch (err) {
         setFiles([]);
       } finally {
@@ -250,22 +295,30 @@ const Profile: React.FC = () => {
             {files.map((item) => (
               <div key={item.id} className={styles.fileItem}>
                 <div className={styles.fileMain}>
-                  <div className={styles.fileName}>{item.processedName || item.originalName}</div>
+                  <div className={styles.fileName}>{item.processedName || item.originalName || 'File'}</div>
                   <div className={styles.fileMeta}>
-                    <span className={styles.pill}>{String(item.fileType || item.type || 'file')}</span>
+                    <span className={styles.pill}>{String(item.fileType || 'file')}</span>
                     <span>
-                      {formatFileSize(Number(item.processedSize || item.size || 0))}
-                      {item.originalSize
-                        ? ` • Saved ${formatFileSize(
-                            Math.max(0, Number(item.originalSize || 0) - Number(item.processedSize || 0))
-                          )}`
-                        : ''}
+                      {formatFileSize(Number(item.processedSize ?? item.size ?? 0))}
+                      {(() => {
+                        const processed = Number(item.processedSize ?? item.size ?? 0);
+                        const ratio = typeof item.compressionRatio === 'number' ? Number(item.compressionRatio) : undefined;
+                        const original = Number(item.originalSize ?? (processed && ratio && ratio > 0 && ratio <= 1 ? processed / ratio : 0));
+                        const saved = original && processed ? Math.max(0, Math.round(original - processed)) : 0;
+                        return saved > 0 ? ` • Saved ${formatFileSize(saved)}` : '';
+                      })()}
                     </span>
-                    {item.compressionRatio !== undefined && (
-                      <span>• {Number(item.compressionRatio).toFixed(1)}%</span>
+                    {typeof item.compressionRatio === 'number' && (
+                      <span>
+                        • {(() => {
+                          const r = Number(item.compressionRatio);
+                          const pct = r > 0 && r <= 1 ? r * 100 : r; // backend ratio 0..1
+                          return `${pct.toFixed(1)}%`;
+                        })()}
+                      </span>
                     )}
-                    {item.createdAt && (
-                      <span>• {new Date(item.createdAt).toLocaleString()}</span>
+                    {(item.createdAt || item.uploadedAt || item.convertedAt) && (
+                      <span>• {new Date(item.createdAt || item.uploadedAt || item.convertedAt).toLocaleString()}</span>
                     )}
                   </div>
                 </div>
@@ -275,7 +328,7 @@ const Profile: React.FC = () => {
                       className={`${styles.button} ${styles.secondary} ${styles.small}`}
                       href={getDownloadUrl(item)}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                     >
                       Download
                     </a>

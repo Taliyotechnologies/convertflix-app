@@ -30,6 +30,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 20px;
+  box-shadow: var(--shadow-sm);
 }
 
 .row {
@@ -71,6 +72,7 @@
   border-radius: 10px;
   border: 1px solid transparent;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .primary {
@@ -78,9 +80,25 @@
   color: white;
 }
 
+.primary:hover {
+  background: linear-gradient(90deg, var(--button-hover-start), var(--button-hover-end));
+  transform: translateY(-1px);
+}
+
 .secondary {
-  background: transparent;
-  border-color: var(--border);
+  background: var(--control-bg);
+  border-color: var(--control-border);
+  color: var(--text-secondary);
+}
+
+.secondary:hover {
+  background: var(--control-hover-bg);
+  border-color: var(--control-hover-border);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .helper {
@@ -128,6 +146,11 @@
 .danger {
   color: #b42318;
   border-color: #f3c1bb;
+}
+
+.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: #ef4444;
 }
 
 .copyRow {
