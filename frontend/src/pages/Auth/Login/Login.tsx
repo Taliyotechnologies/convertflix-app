@@ -9,6 +9,7 @@ import {
   Globe
 } from 'lucide-react';
 import styles from './Login.module.css';
+import { useSEO } from '../../../hooks/useSEO';
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -19,6 +20,8 @@ const Login: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+ 
+  useSEO({ noindex: true });
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};

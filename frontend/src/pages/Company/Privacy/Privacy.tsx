@@ -1,7 +1,14 @@
 import React from 'react';
 import styles from './Privacy.module.css';
+import { useSEO } from '../../../hooks/useSEO';
 
 const Privacy: React.FC = () => {
+  useSEO({
+    title: 'Privacy Policy – ConvertFlix',
+    description: 'Read the ConvertFlix Privacy Policy. Your files are processed locally in your browser—never uploaded to our servers.',
+    keywords: ['privacy policy','data privacy','convertflix privacy','security','local processing'],
+    path: '/privacy'
+  });
   return (
     <div className={styles.privacy}>
       <div className={styles.container}>

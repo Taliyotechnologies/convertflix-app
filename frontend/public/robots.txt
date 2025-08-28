@@ -1,0 +1,5 @@
+# Robots.txt for ConvertFlix (update domain if different)
+User-agent: *
+Allow: /
+
+Sitemap: https://convertflix.vercel.app/sitemap.xml

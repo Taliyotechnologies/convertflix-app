@@ -8,12 +8,16 @@ import {
 } from 'lucide-react';
 import styles from './ForgotPassword.module.css';
 
+import { useSEO } from '../../../hooks/useSEO';
+
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState('');
   const { forgotPassword } = useAuth();
+ 
+  useSEO({ noindex: true });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

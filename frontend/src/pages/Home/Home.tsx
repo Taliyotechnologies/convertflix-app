@@ -12,8 +12,15 @@ import {
 
 } from 'lucide-react';
 import styles from './Home.module.css';
+import { useSEO } from '../../hooks/useSEO';
 
 const Home: React.FC = () => {
+  useSEO({
+    title: 'ConvertFlix by Taliyo Technologies – Compress & Convert Any File Instantly',
+    description: 'Free online file compression and conversion tools by Taliyo Technologies. Compress images, videos, PDFs, and audio files instantly. Convert between formats with ease.',
+    keywords: ['convert flix','flix convert','convertflix','taliyo technologies','file compression','file conversion','image compressor','video compressor','pdf compressor','audio compressor','online converter','free tools'],
+    path: '/'
+  });
   return (
     <div className={styles.home}>
       {/* Hero Section */}

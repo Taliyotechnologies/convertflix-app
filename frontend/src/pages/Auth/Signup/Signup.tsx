@@ -9,6 +9,7 @@ import {
   Shield
 } from 'lucide-react';
 import styles from './Signup.module.css';
+import { useSEO } from '../../../hooks/useSEO';
 
 const Signup: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -21,6 +22,8 @@ const Signup: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
+  
+  useSEO({ noindex: true });
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};

@@ -12,8 +12,15 @@ import {
 
 } from 'lucide-react';
 import styles from './About.module.css';
+import { useSEO } from '../../../hooks/useSEO';
 
 const About: React.FC = () => {
+  useSEO({
+    title: 'About ConvertFlix – Taliyo Technologies',
+    description: 'Learn about ConvertFlix by Taliyo Technologies. Our mission: fast, secure, privacy‑first file compression and conversion tools for everyone.',
+    keywords: ['about convertflix','taliyo technologies','file compression','file conversion','privacy first','fast tools'],
+    path: '/about'
+  });
   return (
     <div className={styles.about}>
       <div className={styles.container}>

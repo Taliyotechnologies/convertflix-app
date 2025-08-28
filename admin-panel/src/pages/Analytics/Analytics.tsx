@@ -15,7 +15,7 @@ import {
   Legend,
 } from 'recharts';
 
-const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6', '#14B8A6', '#F472B6'];
+const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#1D4ED8', '#14B8A6', '#60A5FA'];
 
 type CountryMetric = 'visits' | 'devices';
 
@@ -268,7 +268,7 @@ const Analytics: React.FC = () => {
                     <XAxis dataKey="name" />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="value" fill="#6366F1" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="value" fill="#2563EB" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

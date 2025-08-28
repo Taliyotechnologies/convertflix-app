@@ -11,8 +11,15 @@ import {
 } from 'lucide-react';
 import styles from './Contact.module.css';
 import { publicAPI } from '../../../services/api';
+import { useSEO } from '../../../hooks/useSEO';
 
 const Contact: React.FC = () => {
+  useSEO({
+    title: 'Contact ConvertFlix – Support & Partnerships',
+    description: "Have questions or need help? Contact ConvertFlix by Taliyo Technologies for support, feedback, partnerships, and media.",
+    keywords: ['contact convertflix','convertflix support','taliyo technologies contact','partnerships','feedback'],
+    path: '/contact'
+  });
   const [formData, setFormData] = useState({
     name: '',
     email: '',

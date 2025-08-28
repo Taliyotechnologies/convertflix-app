@@ -14,6 +14,7 @@ import {
   Settings,
   Zap
 } from 'lucide-react';
+import { useSEO } from '../../hooks/useSEO';
 
 interface ToolPageProps {
   title: string;
@@ -34,6 +35,19 @@ const ToolPage: React.FC<ToolPageProps> = ({
   toolType,
   inputFormats
 }) => {
+  const niceTool = toolType.charAt(0).toUpperCase() + toolType.slice(1);
+  const actionLabel = actionType === 'compress' ? 'Compress' : 'Convert';
+  useSEO({
+    title: `${actionLabel} ${niceTool} Online – ${title} | ConvertFlix`,
+    description,
+    keywords: [
+      'convert flix','flix convert','convertflix','taliyo technologies',
+      `${actionLabel.toLowerCase()} ${toolType} online`,
+      `${toolType} ${actionType} tool`,
+      `${toolType} converter`,`file ${actionType} ${toolType}`
+    ],
+    path: `/tools/${actionType}-${toolType}`,
+  });
   const getDisplayFileName = (name: string, maxLength: number = 48): string => {
     if (!name || name.length <= maxLength) return name;
     const dotIndex = name.lastIndexOf('.');

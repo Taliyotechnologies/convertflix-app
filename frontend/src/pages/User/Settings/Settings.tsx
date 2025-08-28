@@ -5,9 +5,13 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { authAPI } from '../../../services/api';
 
+import { useSEO } from '../../../hooks/useSEO';
+
 const Settings: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { logout, user } = useAuth();
+ 
+  useSEO({ noindex: true });
 
   // Notifications preference (local only)
   const [emailNotifications, setEmailNotifications] = useState(false);

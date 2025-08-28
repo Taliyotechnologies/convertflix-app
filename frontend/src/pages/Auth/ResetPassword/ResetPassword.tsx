@@ -10,11 +10,15 @@ import {
 } from 'lucide-react';
 import styles from './ResetPassword.module.css';
 
+import { useSEO } from '../../../hooks/useSEO';
+
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const navigate = useNavigate();
   const { resetPassword } = useAuth();
+ 
+  useSEO({ noindex: true });
   
   const [formData, setFormData] = useState({
     password: '',

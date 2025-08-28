@@ -4,6 +4,8 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { userAPI, formatFileSize, buildAbsoluteUrl } from '../../../services/api';
 import { generateAvatar } from '../../../utils/avatar';
 
+import { useSEO } from '../../../hooks/useSEO';
+
 const Profile: React.FC = () => {
   const { user, isLoading, logout, updateUser } = useAuth();
   const [fullName, setFullName] = useState<string>(user?.fullName || '');
@@ -19,6 +21,8 @@ const Profile: React.FC = () => {
   const [loadingStats, setLoadingStats] = useState<boolean>(true);
   const [loadingFiles, setLoadingFiles] = useState<boolean>(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+ 
+  useSEO({ noindex: true });
   
 
   

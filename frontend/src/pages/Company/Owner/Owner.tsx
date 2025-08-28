@@ -7,8 +7,15 @@ import {
   Mountain
 } from 'lucide-react';
 import styles from './Owner.module.css';
+import { useSEO } from '../../../hooks/useSEO';
 
 const Owner: React.FC = () => {
+  useSEO({
+    title: 'Owner – Taliyo Technologies | ConvertFlix',
+    description: 'Learn about Taliyo Technologies, the team behind ConvertFlix. Our philosophy: accessibility, privacy, and performance.',
+    keywords: ['owner','taliyo technologies','harsh budhauliya','convertflix team','about taliyo'],
+    path: '/owner'
+  });
   return (
     <div className={styles.owner}>
       <div className={styles.container}>

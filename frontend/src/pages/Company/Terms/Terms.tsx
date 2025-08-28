@@ -1,7 +1,14 @@
 import React from 'react';
 import styles from './Terms.module.css';
+import { useSEO } from '../../../hooks/useSEO';
 
 const Terms: React.FC = () => {
+  useSEO({
+    title: 'Terms of Service – ConvertFlix',
+    description: 'Read the Terms of Service for ConvertFlix. Learn about acceptable use, limitations, and your responsibilities.',
+    keywords: ['terms of service','convertflix terms','acceptable use','legal'],
+    path: '/terms'
+  });
   return (
     <div className={styles.terms}>
       <div className={styles.container}>
