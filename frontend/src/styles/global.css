@@ -91,6 +91,7 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden; /* prevent horizontal scroll spikes from absolute elements */
 }
 
 #root {
