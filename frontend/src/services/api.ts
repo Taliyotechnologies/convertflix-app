@@ -14,6 +14,22 @@ export const getFileExtension = (filename: string): string => {
   return filename.split('.').pop()?.toLowerCase() || '';
 };
 
+// Helper to build absolute backend URL (for static assets under /uploads)
+export const buildAbsoluteUrl = (path: string): string => {
+  try {
+    if (!path) return path;
+    // If already absolute, return as-is
+    if (/^https?:\/\//i.test(path)) return path;
+    // Derive backend base by stripping a trailing /api from API_BASE_URL
+    const backendBase = API_BASE_URL.replace(/\/?api\/?$/i, '');
+    const base = backendBase.replace(/\/$/, '');
+    const p = path.startsWith('/') ? path : `/${path}`;
+    return `${base}${p}`;
+  } catch (_) {
+    return path;
+  }
+};
+
 // Generic API request function
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token');
@@ -240,5 +256,6 @@ export default {
   public: publicAPI,
   formatFileSize,
   getFileExtension,
+  buildAbsoluteUrl,
 };
 

@@ -36,30 +36,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
+    // On app start: hydrate from localStorage and then refresh from backend
+    const init = async () => {
       try {
-        const parsed = JSON.parse(userData);
-        const ensured = parsed?.avatar ? parsed : { ...parsed, avatar: generateAvatar(parsed?.fullName) };
-        setUser(ensured);
-        try { localStorage.setItem('user', JSON.stringify(ensured)); } catch {}
-        // Verify token with backend
-        authAPI.getProfile().catch(() => {
-          // Token is invalid, clear it
+        const token = localStorage.getItem('token');
+        const userData = localStorage.getItem('user');
+
+        let localUser: User | null = null;
+        if (userData) {
+          try {
+            const parsed = JSON.parse(userData);
+            const ensured = parsed?.avatar ? parsed : { ...parsed, avatar: generateAvatar(parsed?.fullName) };
+            localUser = ensured;
+            setUser(ensured);
+            try { localStorage.setItem('user', JSON.stringify(ensured)); } catch {}
+          } catch (e) {
+            console.error('Error parsing user data:', e);
+            localStorage.removeItem('user');
+          }
+        }
+
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          const res = await authAPI.getProfile();
+          const backendUser = res?.user;
+          if (backendUser) {
+            // Merge backend truth with local avatar
+            const merged = {
+              ...(localUser || {}),
+              ...backendUser,
+            } as User;
+            const ensured = merged?.avatar ? merged : { ...merged, avatar: generateAvatar(merged?.fullName) };
+            setUser(ensured);
+            try { localStorage.setItem('user', JSON.stringify(ensured)); } catch {}
+          }
+        } catch (_) {
+          // Token invalid -> clear auth
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           setUser(null);
-        });
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        } finally {
+          setIsLoading(false);
+        }
+      } catch (_) {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+    init();
   }, []);
 
   const login = async (email: string, password: string) => {

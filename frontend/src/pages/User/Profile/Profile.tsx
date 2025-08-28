@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styles from './Profile.module.css';
 import { useAuth } from '../../../contexts/AuthContext';
-import { userAPI, formatFileSize } from '../../../services/api';
+import { userAPI, formatFileSize, buildAbsoluteUrl } from '../../../services/api';
 import { generateAvatar } from '../../../utils/avatar';
 
 const Profile: React.FC = () => {
@@ -18,6 +18,7 @@ const Profile: React.FC = () => {
   const [files, setFiles] = useState<any[]>([]);
   const [loadingStats, setLoadingStats] = useState<boolean>(true);
   const [loadingFiles, setLoadingFiles] = useState<boolean>(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   
 
   
@@ -53,7 +54,7 @@ const Profile: React.FC = () => {
     const fileType = String(raw?.fileType ?? raw?.type ?? 'file');
     const createdAt = raw?.createdAt ?? raw?.uploadedAt ?? raw?.convertedAt;
     const processedName = raw?.processedName ?? raw?.name ?? raw?.originalName;
-    const downloadUrl = raw?.downloadUrl ?? raw?.url ?? raw?.download ?? (id ? `/api/user/files/${id}/download` : undefined);
+    const downloadUrl = raw?.downloadUrl ?? raw?.url ?? raw?.download;
     return {
       ...raw,
       id,
@@ -153,6 +154,33 @@ const Profile: React.FC = () => {
     fetchFiles();
   }, []);
   
+  const handleDownload = (url?: string) => {
+    if (!url) return;
+    const abs = buildAbsoluteUrl(url);
+    try {
+      window.open(abs, '_blank');
+    } catch (_) {
+      // no-op
+    }
+  };
+
+  const handleDelete = async (fileId: string) => {
+    if (!fileId || deletingId) return;
+    setDeletingId(fileId);
+    try {
+      await userAPI.deleteFile(fileId);
+      setFiles(prev => prev.filter(f => f.id !== fileId));
+      // Refresh stats after deletion
+      try {
+        const res: any = await userAPI.getStats();
+        setStats(normalizeStats(res));
+      } catch (_) {}
+    } catch (err) {
+      // Optionally show a toast in future
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className={styles.profilePage}>
@@ -277,6 +305,25 @@ const Profile: React.FC = () => {
                     <span>{formatFileSize(Number(item.processedSize ?? item.size ?? 0))}</span>
                   </div>
                 </div>
+                <div>
+                  <button
+                    type="button"
+                    className={`${styles.button} ${styles.secondary} ${styles.small}`}
+                    onClick={() => handleDownload(item.downloadUrl)}
+                    disabled={!item.downloadUrl}
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.button} ${styles.small} ${styles.secondary} ${styles.danger}`}
+                    style={{ marginLeft: 8 }}
+                    onClick={() => handleDelete(item.id)}
+                    disabled={deletingId === item.id}
+                  >
+                    {deletingId === item.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -287,3 +334,4 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
